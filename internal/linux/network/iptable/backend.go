@@ -100,18 +100,6 @@ type Stat struct {
 
 type option func(*IPTables)
 
-func IPFamily(proto Protocol) option {
-	return func(ipt *IPTables) {
-		ipt.proto = proto
-	}
-}
-
-func Timeout(timeout int) option {
-	return func(ipt *IPTables) {
-		ipt.timeout = timeout
-	}
-}
-
 func NewBackend(opts ...option) (*IPTables, error) {
 
 	ipt := &IPTables{
@@ -313,45 +301,6 @@ func getIptablesVersionString(path string) (string, error) {
 		return "", err
 	}
 	return out.String(), nil
-}
-
-// Checks if an iptables version is after 1.4.20, when --wait was added
-func iptablesHasWaitCommand(v1 int, v2 int, v3 int) bool {
-	if v1 > 1 {
-		return true
-	}
-	if v1 == 1 && v2 > 4 {
-		return true
-	}
-	if v1 == 1 && v2 == 4 && v3 >= 20 {
-		return true
-	}
-	return false
-}
-
-// Checks if an iptablse version is after 1.6.0, when --wait support second
-func iptablesWaitSupportSecond(v1 int, v2 int, v3 int) bool {
-	if v1 > 1 {
-		return true
-	}
-	if v1 == 1 && v2 >= 6 {
-		return true
-	}
-	return false
-}
-
-// Checks if an iptables version is after 1.6.2, when --random-fully was added
-func iptablesHasRandomFully(v1 int, v2 int, v3 int) bool {
-	if v1 > 1 {
-		return true
-	}
-	if v1 == 1 && v2 > 6 {
-		return true
-	}
-	if v1 == 1 && v2 == 6 && v3 >= 2 {
-		return true
-	}
-	return false
 }
 
 // Checks if a rule specification exists for a table
