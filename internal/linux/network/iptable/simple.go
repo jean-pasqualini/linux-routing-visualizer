@@ -16,11 +16,11 @@ func NewIPtableReader() *IPtableReader {
 
 func (r *IPtableReader) Read(context context.Context) {
 	logger := logging.FromContext(context)
-	ipt, _ := NewBackend()
+	ipt := NewBackend()
 
 	chains, err := ipt.ListChains("filter")
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("an error: " + err.Error())
 		return
 	}
 
