@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/k0kubun/pp"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -21,13 +22,20 @@ type table struct {
 }
 
 type chain struct {
-	Name  string
-	Rules []rule
+	Name   string
+	Rules  []rule
+	Policy string
 }
 
 type rule struct {
-	Raw   string
-	Chain string
+	Raw        string
+	Chain      string
+	JumpTarget string
+}
+
+type counter struct {
+	Packets uint64
+	Bytes   uint64
 }
 
 func (b *iptableBackend) ListChains(_ string) ([]string, error) {
@@ -94,6 +102,17 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 		Chain: chainName,
 		Raw:   input,
 	}
+
+	for i := 2; i < len(parts); i++ {
+		switch parts[i] {
+		case "-j":
+			if i+1 < len(parts) {
+				ruleItem.JumpTarget = parts[i+1]
+				i++
+			}
+		}
+	}
+
 	return ruleItem, nil
 }
 
@@ -106,11 +125,26 @@ func (b *iptableBackend) parseChain(line string) (chain, error) {
 	name := strings.TrimPrefix(parts[0], ":")
 
 	chain := chain{
-		Name:  name,
-		Rules: []rule{},
+		Name:   name,
+		Rules:  []rule{},
+		Policy: parts[1],
 	}
 
 	return chain, nil
+}
+
+func (b *iptableBackend) parseCounter(raw string) counter {
+	// [packets:bytes]
+	raw = strings.Trim(raw, "[]")
+	parts := strings.Split(raw, ":")
+	if len(parts) != 2 {
+		return counter{}
+	}
+	fmt.Println(parts)
+	packets, _ := strconv.ParseUint(parts[0], 10, 64)
+	bytes, _ := strconv.ParseUint(parts[1], 10, 64)
+
+	return counter{Packets: packets, Bytes: bytes}
 }
 
 func (b *iptableBackend) runProces() (string, error) {
@@ -122,6 +156,7 @@ func (b *iptableBackend) runProces() (string, error) {
 	cmd.Stderr = &err
 
 	if errRun := cmd.Run(); errRun != nil {
+		fmt.Println(errRun.Error())
 		return "", errors.New(err.String())
 	}
 
