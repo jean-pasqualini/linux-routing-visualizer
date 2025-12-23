@@ -22,5 +22,7 @@ from_all_ns:
 	sysctl -w net.netfilter.nf_log_all_netns=1
 list-rules:
 	sudo nft list ruleset
+nsenter:
+	docker run -it --rm --privileged --pid=host justincormack/nsenter1
 curl:
 	curl 192.168.32.213:9090
