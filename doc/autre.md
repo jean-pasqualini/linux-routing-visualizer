@@ -1,3 +1,6 @@
+https://manpages.debian.org/trixie/iptables/iptables-extensions.8.en.html#TRACE
+
+
 # Netfilter / iptables — Tables, Chaînes et Usage
 
 Ce document liste **toutes les tables iptables**, leurs **chaînes associées** et leur **usage**, dans un format **copiable tel quel**.

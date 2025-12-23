@@ -14,11 +14,11 @@ import (
 type tableType int
 
 const (
-	raw      tableType = iota
-	mangle   tableType = iota
-	nat      tableType = iota
-	filter   tableType = iota
-	security tableType = iota
+	raw      tableType = iota // Before conntrack
+	mangle   tableType = iota // To modify packet (TTL, marks, Qos)
+	nat      tableType = iota // To SNAT/DNAT
+	filter   tableType = iota // To filter out
+	security tableType = iota // SELinux
 )
 
 type chainType int
@@ -30,6 +30,16 @@ const (
 	output      chainType = iota
 	postrouting chainType = iota
 )
+
+var rawBuiltinChains = [...]chainType{prerouting, output}
+var mangleBuiltinChains = [...]chainType{prerouting, input, forward, output, postrouting}
+var natBuiltinChains = [...]chainType{prerouting, input, forward, output}
+var filterBuiltinChains = [...]chainType{input, forward, output}
+var securityBuiltinChains = [...]chainType{input, forward, output}
+
+var inboundChaining = [...]chainType{prerouting, input}
+var outboundChaining = [...]chainType{output, postrouting}
+var forwardChaining = [...]chainType{prerouting, forward, postrouting}
 
 type iptableBackend struct{}
 
