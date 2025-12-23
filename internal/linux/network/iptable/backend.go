@@ -4,10 +4,31 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/k0kubun/pp"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/k0kubun/pp"
+)
+
+type tableType int
+
+const (
+	raw      tableType = iota
+	mangle   tableType = iota
+	nat      tableType = iota
+	filter   tableType = iota
+	security tableType = iota
+)
+
+type chainType int
+
+const (
+	prerouting  chainType = iota
+	input       chainType = iota
+	forward     chainType = iota
+	output      chainType = iota
+	postrouting chainType = iota
 )
 
 type iptableBackend struct{}
