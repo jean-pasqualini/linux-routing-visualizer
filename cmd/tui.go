@@ -4,6 +4,8 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"github.com/gdamore/tcell/v2"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
@@ -14,10 +16,51 @@ var tuiCmd = &cobra.Command{
 	Short: "A tui test",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		box := tview.NewBox().SetBorder(true).SetTitle("Linux Routing Visualizer")
-		if err := tview.NewApplication().SetRoot(box, true).Run(); err != nil {
-			panic(err)
+		app := tview.NewApplication()
+
+		buildPage := func(name string) *ui.DiagramCanvas {
+			canvas := ui.NewDiagramCanvas(80, 24)
+			r1 := &ui.Node{X: 10, Y: 3, W: 10, H: 5, Title: "Raw " + name}
+			r2 := &ui.Node{X: 20 + 5, Y: 3, W: 10, H: 5, Title: "Mangle"}
+			r3 := &ui.Node{X: 30 + 5 + 5, Y: 3, W: 10, H: 5, Title: "Nat"}
+			r4 := &ui.Node{X: 40 + 5 + 5 + 5, Y: 3, W: 10, H: 5, Title: "Filter"}
+			r5 := &ui.Node{X: 50 + 5 + 5 + 5 + 5, Y: 3, W: 10, H: 5, Title: "Security"}
+			canvas.AddNode(r1)
+			canvas.AddNode(r2)
+			canvas.AddNode(r3)
+			canvas.AddNode(r4)
+			canvas.AddNode(r5)
+			canvas.AddEdge(r1, r2)
+			canvas.AddEdge(r2, r3)
+			canvas.AddEdge(r3, r4)
+			canvas.AddEdge(r4, r5)
+
+			return canvas
 		}
+
+		pages := tview.NewPages()
+		pages.AddPage("lol", buildPage("lol"), true, true)
+		pages.AddPage("lal", buildPage("lal"), true, true)
+
+		tabbar := ui.NewTabBar([]string{"lol", "lal"}).
+			SetOnSelect(func(_ int, name string) {
+				pages.SwitchToPage(name)
+			})
+
+		tabContainer := tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(tabbar, 1, 0, false).
+			AddItem(pages, 0, 1, false)
+
+		layout := tview.NewFlex().
+			AddItem(tabContainer, 0, 1, true).
+			AddItem(tview.NewBox().SetBorder(true).SetBackgroundColor(tcell.ColorBlue), 0, 1, false)
+
+		frame := tview.NewFrame(layout).
+			SetBorders(0, 0, 0, 0, 0, 0).
+			AddText("Routing Visualizer", true, tview.AlignCenter, tcell.ColorWhite)
+
+		app.SetRoot(frame, true).EnableMouse(true)
+		app.Run()
 	},
 }
 
