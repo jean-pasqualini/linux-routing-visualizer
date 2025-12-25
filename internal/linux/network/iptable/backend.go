@@ -3,12 +3,9 @@ package iptable
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
-
-	"github.com/k0kubun/pp"
 )
 
 type tableType int
@@ -41,7 +38,9 @@ var inboundChaining = [...]chainType{prerouting, input}
 var outboundChaining = [...]chainType{output, postrouting}
 var forwardChaining = [...]chainType{prerouting, forward, postrouting}
 
-type iptableBackend struct{}
+type iptableBackend struct {
+	stdout string
+}
 
 func NewBackend() *iptableBackend {
 	return &iptableBackend{}
@@ -69,21 +68,25 @@ type counter struct {
 	Bytes   uint64
 }
 
-func (b *iptableBackend) ListChains(_ string) ([]string, error) {
+func (b *iptableBackend) ListChains(_ string) (map[string]table, error) {
 	config, err := b.fetch()
 	if err != nil {
 		return nil, err
 	}
-	pp.Println(config)
-	return []string{}, nil
+	return config, nil
 }
 
 func (b *iptableBackend) fetch() (map[string]table, error) {
 	output, err := b.runProces()
+	b.stdout = output
 	if err != nil {
 		return nil, err
 	}
 	return b.parseTables(output)
+}
+
+func (b *iptableBackend) GetStdout() string {
+	return b.stdout
 }
 
 func (b *iptableBackend) parseTables(input string) (map[string]table, error) {
@@ -108,7 +111,6 @@ func (b *iptableBackend) parseTables(input string) (map[string]table, error) {
 		case line == "COMMIT":
 			currentTable = table{}
 		case strings.HasPrefix(line, ":"):
-			fmt.Println(line)
 			chainItem, _ := b.parseChain(line)
 			currentTable.Chains[chainItem.Name] = &chainItem
 		case strings.HasPrefix(line, "-A"):
@@ -171,7 +173,6 @@ func (b *iptableBackend) parseCounter(raw string) counter {
 	if len(parts) != 2 {
 		return counter{}
 	}
-	fmt.Println(parts)
 	packets, _ := strconv.ParseUint(parts[0], 10, 64)
 	bytes, _ := strconv.ParseUint(parts[1], 10, 64)
 
@@ -187,11 +188,8 @@ func (b *iptableBackend) runProces() (string, error) {
 	cmd.Stderr = &err
 
 	if errRun := cmd.Run(); errRun != nil {
-		fmt.Println(errRun.Error())
 		return "", errors.New(err.String())
 	}
-
-	fmt.Println(out.String())
 
 	return out.String(), nil
 }

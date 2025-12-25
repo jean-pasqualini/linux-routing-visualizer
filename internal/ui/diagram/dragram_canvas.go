@@ -1,8 +1,9 @@
-package ui
+package diagram
 
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"unicode/utf8"
 )
 
 type DiagramCanvas struct {
@@ -25,7 +26,7 @@ type Edge struct {
 
 func NewDiagramCanvas(w, h int) *DiagramCanvas {
 	d := &DiagramCanvas{
-		Box:    tview.NewBox().SetBackgroundColor(tcell.ColorBlack).SetBorder(true).SetTitle("Diagram"),
+		Box:    tview.NewBox().SetBackgroundColor(tcell.ColorBlack).SetBorder(false),
 		width:  w,
 		height: h,
 		nodes:  []*Node{},
@@ -43,6 +44,7 @@ func NewDiagramCanvas(w, h int) *DiagramCanvas {
 }
 
 func (d *DiagramCanvas) AddNode(n *Node) {
+	n.Y = (len(d.nodes) * (n.H + 2))
 	d.nodes = append(d.nodes, n)
 }
 
@@ -84,24 +86,33 @@ func (d *DiagramCanvas) drawNode(n *Node) {
 	x, y, w, h := n.X, n.Y, n.W, n.H
 
 	for i := 0; i < w; i++ {
-		d.buffer[y][x+i] = '-'
-		d.buffer[y+h-1][x+i] = '-'
+		d.buffer[y][x+i] = '─'
+		d.buffer[y+h-1][x+i] = '─'
 	}
 	for i := 0; i < h; i++ {
-		d.buffer[y+i][x] = '|'
-		d.buffer[y+i][x+w-1] = '|'
+		d.buffer[y+i][x] = '│'
+		d.buffer[y+i][x+w-1] = '│'
 	}
 
-	d.buffer[y][x] = '+'
-	d.buffer[y][x+w-1] = '+'
-	d.buffer[y+h-1][x] = '+'
-	d.buffer[y+h-1][x+w-1] = '+'
+	d.buffer[y][x] = '╭'
+	d.buffer[y][x+w-1] = '╮'
+	d.buffer[y+h-1][x] = '╰'
+	d.buffer[y+h-1][x+w-1] = '╯'
 
+	// --- centrage du titre ---
 	title := n.Title
-	for i, r := range title {
-		if i+1 < w-1 {
-			d.buffer[y+h/2][x+1+i] = r
+	titleWidth := utf8.RuneCountInString(title)
+
+	startX := x + (w-titleWidth)/2
+	titleY := y + h/2
+
+	i := 0
+	for _, r := range title {
+		pos := startX + i
+		if pos > x && pos < x+w-1 {
+			d.buffer[titleY][pos] = r
 		}
+		i++
 	}
 }
 
@@ -112,7 +123,7 @@ func (d *DiagramCanvas) drawEdge(a, b *Node) {
 	_ = b.Y + b.H/2
 
 	for x := x1; x < x2; x++ {
-		d.buffer[y1][x] = '-'
+		d.buffer[y1][x] = '─'
 	}
 	d.buffer[y1][x2-1] = '>'
 }
