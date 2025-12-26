@@ -4,12 +4,18 @@ build-docker:
 	docker build -t linux-routing:latest .
 run-docker:
 	docker run --net=host --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go
-run-docker-tui:
-	docker run --net=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go tui
+run-docker:
+	docker run --net=host --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go tui
+dev-docker-tui:
+	docker run -d --net=host --pid=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing /app/kill.sh
+	docker run --net=host --pid=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing /app/dev.sh
 enter-docker:
 	docker run --rm -it --net=host --privileged linux-routing bash
 clean-trace:
 	sudo iptables -D OUTPUT 1 -t raw
+complete:
+	iptables -I PREROUTING 1 -p tcp --sport 8888 --dport 9090 -t raw -j TRACE
+	iptables -I PREROUTING 2 -t raw -j TRACE
 trace:
 	sudo iptables -I OUTPUT 1 -m tcp -p tcp --dport 9090 -t raw -j TRACE
 	sudo iptables -I PREROUTING 1 -m tcp -p tcp --dport 9090 -t raw -j TRACE

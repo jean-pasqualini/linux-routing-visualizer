@@ -8,36 +8,6 @@ import (
 	"strings"
 )
 
-type tableType int
-
-const (
-	raw      tableType = iota // Before conntrack
-	mangle   tableType = iota // To modify packet (TTL, marks, Qos)
-	nat      tableType = iota // To SNAT/DNAT
-	filter   tableType = iota // To filter out
-	security tableType = iota // SELinux
-)
-
-type chainType int
-
-const (
-	prerouting  chainType = iota
-	input       chainType = iota
-	forward     chainType = iota
-	output      chainType = iota
-	postrouting chainType = iota
-)
-
-var rawBuiltinChains = [...]chainType{prerouting, output}
-var mangleBuiltinChains = [...]chainType{prerouting, input, forward, output, postrouting}
-var natBuiltinChains = [...]chainType{prerouting, input, forward, output}
-var filterBuiltinChains = [...]chainType{input, forward, output}
-var securityBuiltinChains = [...]chainType{input, forward, output}
-
-var inboundChaining = [...]chainType{prerouting, input}
-var outboundChaining = [...]chainType{output, postrouting}
-var forwardChaining = [...]chainType{prerouting, forward, postrouting}
-
 type iptableBackend struct {
 	stdout string
 }
@@ -119,6 +89,17 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 		case "-j":
 			if i+1 < len(parts) {
 				ruleItem.JumpTarget = parts[i+1]
+				switch parts[i+1] {
+				case "REJECT":
+					// --reject-with
+				case "ACCEPT":
+				case "DROP":
+				case "LOG":
+				case "DNAT":
+				case "SNAT":
+				case "MASQUERADE":
+				case "RETURN":
+				}
 				i++
 			}
 		case "-p":
@@ -136,7 +117,13 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 				ruleItem.Modules = append(ruleItem.Modules, parts[i+1])
 				switch parts[i+1] {
 				case "tcp":
-					b.parseRuleModuleTCP()
+					ruleItem = b.parseRuleModuleTCPUDP(input, ruleItem)
+				case "udp":
+					ruleItem = b.parseRuleModuleTCPUDP(input, ruleItem)
+				case "conntrack":
+					ruleItem = b.parseRuleModuleConntrack(input, ruleItem)
+				case "addrtype":
+					ruleItem = b.parseRuleModuleAddrType(input, ruleItem)
 				}
 			}
 		}
@@ -145,8 +132,62 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 	return ruleItem, nil
 }
 
-func (b *iptableBackend) parseRuleModuleTCP() {
+func (b *iptableBackend) parseRuleModuleTCPUDP(input string, ruleItem rule) rule {
+	parts := strings.Fields(input)
 
+	for i := 2; i < len(parts); i++ {
+		switch parts[i] {
+		case "--dport":
+			if i+1 < len(parts) {
+				ruleItem.Filter.To.Port = parts[i+1]
+				i++
+			}
+		case "--sport":
+			if i+1 < len(parts) {
+				ruleItem.Filter.From.Port = parts[i+1]
+				i++
+			}
+		}
+	}
+
+	return ruleItem
+}
+
+func (b *iptableBackend) parseRuleModuleConntrack(input string, ruleItem rule) rule {
+	parts := strings.Fields(input)
+
+	for i := 2; i < len(parts); i++ {
+		switch parts[i] {
+		case "--ctstate":
+			if i+1 < len(parts) {
+				ruleItem.Filter.ConnectionState = parts[i+1]
+				i++
+			}
+		}
+	}
+
+	return ruleItem
+}
+
+func (b *iptableBackend) parseRuleModuleAddrType(input string, ruleItem rule) rule {
+	parts := strings.Fields(input)
+
+	for i := 2; i < len(parts); i++ {
+		switch parts[i] {
+		case "--src-type":
+			if i+1 < len(parts) {
+				ruleItem.Filter.From.AddrType = parts[i+1]
+				i++
+			}
+		case "--dst-type":
+			if i+1 < len(parts) {
+				ruleItem.Filter.To.AddrType = parts[i+1]
+				i++
+			}
+		}
+	}
+
+	return ruleItem
 }
 
 func (b *iptableBackend) parseChain(line string) (chain, error) {

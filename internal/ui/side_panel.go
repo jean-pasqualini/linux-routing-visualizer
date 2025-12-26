@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/diagram"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/tab"
 	"github.com/rivo/tview"
+	"strings"
 )
 
 func NewSidePanel() tview.Primitive {
@@ -22,6 +24,27 @@ func NewSidePanel() tview.Primitive {
 		return canvas
 	}
 
+	listFromChains := func(chains []iptable.ChainType) []string {
+		output := []string{}
+
+		for _, chain := range chains {
+			output = append(output, string(chain))
+		}
+
+		return output
+	}
+
+	listFromTables := func(tables []iptable.TableType) []string {
+		output := []string{}
+
+		for _, table := range tables {
+			sTable := string(table)
+			output = append(output, strings.ToUpper(sTable[:1])+sTable[1:])
+		}
+
+		return output
+	}
+
 	/**
 	tables := tview.NewTextView().
 		SetScrollable(true).
@@ -29,10 +52,10 @@ func NewSidePanel() tview.Primitive {
 		SetDynamicColors(true)
 	*/
 	pages := tview.NewPages()
-	pages.AddPage("Tables", buildCanvas([]string{"Raw", "Mangle", "Nat", "Filter", "Security"}), true, true)
-	pages.AddPage("Inbound", buildCanvas([]string{"PREROUTING", "INPUT"}), true, true)
-	pages.AddPage("Forward", buildCanvas([]string{"PREROUTING", "FORWARD", "POSTROUTING"}), true, true)
-	pages.AddPage("Outbound", buildCanvas([]string{"OUTPUT", "POSTROUTING"}), true, true)
+	pages.AddPage("Tables", buildCanvas(listFromTables(iptable.TablesList[:])), true, true)
+	pages.AddPage("Inbound", buildCanvas(listFromChains(iptable.InboundChaining[:])), true, true)
+	pages.AddPage("Forward", buildCanvas(listFromChains(iptable.ForwardChaining[:])), true, true)
+	pages.AddPage("Outbound", buildCanvas(listFromChains(iptable.OutboundChaining[:])), true, true)
 
 	tabContainer := tab.NewTabPanelHozitonal(pages)
 

@@ -29,5 +29,5 @@ func NewSimulatorPanel() tview.Primitive {
 }
 
 func showResult(sourceIP string, targetIP string, targetPort string, protocol string) {
-	
+
 }
