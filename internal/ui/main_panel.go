@@ -1,6 +1,7 @@
 package ui
 
 import (
+	ui "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/tab"
 	"github.com/k0kubun/pp"
 	"github.com/rivo/tview"
@@ -23,7 +24,10 @@ func NewMainPanel() *MainPanel {
 		SetWrap(true).
 		SetDynamicColors(true)
 
+	simulatorView := ui.NewSimulatorPanel()
+
 	pages := tview.NewPages().
+		AddPage("simulator", simulatorView, true, true).
 		AddPage("raw", rawView, true, true).
 		AddPage("parsed", parsedView, true, true)
 
