@@ -46,28 +46,6 @@ func NewBackend() *iptableBackend {
 	return &iptableBackend{}
 }
 
-type table struct {
-	Name   string
-	Chains map[string]*chain
-}
-
-type chain struct {
-	Name   string
-	Rules  []rule
-	Policy string
-}
-
-type rule struct {
-	Raw        string
-	Chain      string
-	JumpTarget string
-}
-
-type counter struct {
-	Packets uint64
-	Bytes   uint64
-}
-
 func (b *iptableBackend) ListChains(_ string) (map[string]table, error) {
 	config, err := b.fetch()
 	if err != nil {
@@ -141,6 +119,16 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 		case "-j":
 			if i+1 < len(parts) {
 				ruleItem.JumpTarget = parts[i+1]
+				i++
+			}
+		case "-o":
+			if i+1 < len(parts) {
+				ruleItem.Filter.To.Device = parts[i+1]
+				i++
+			}
+		case "--dport":
+			if i+1 < len(parts) {
+				ruleItem.Filter.To.Port = parts[i+1]
 				i++
 			}
 		}
