@@ -11,7 +11,6 @@ type TabPanelHorizontal struct {
 	indexTab uint8
 	tabNames []string
 	pages    *tview.Pages
-	onSelect func(name string)
 }
 
 func NewTabPanelHozitonal(pages *tview.Pages) *TabPanelHorizontal {
@@ -24,11 +23,6 @@ func NewTabPanelHozitonal(pages *tview.Pages) *TabPanelHorizontal {
 
 	v.SetBorder(false)
 	v.SetBorderPadding(0, 0, 0, 0)
-	return v
-}
-
-func (v *TabPanelHorizontal) SetOnSelect(fn func(name string)) *TabPanelHorizontal {
-	v.onSelect = fn
 	return v
 }
 
@@ -103,9 +97,7 @@ func (v *TabPanelHorizontal) InputHandler() func(event *tcell.EventKey, setFocus
 			if uint8(len(v.tabNames)) < v.indexTab+1 {
 				v.indexTab = 0
 			}
-			if v.onSelect != nil {
-				v.onSelect(v.getActiveName())
-			}
+			v.pages.SwitchToPage(v.getActiveName())
 		}
 	}
 }
@@ -113,6 +105,26 @@ func (v *TabPanelHorizontal) InputHandler() func(event *tcell.EventKey, setFocus
 func (v *TabPanelHorizontal) Focus(delegate func(p tview.Primitive)) {
 	delegate(v.pages)
 	return
+}
+
+func (v *TabPanelHorizontal) HasFocus() bool {
+	return v.pages.HasFocus()
+}
+
+// MouseHandler returns the mouse handler for this primitive.
+func (v *TabPanelHorizontal) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+	return func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+		if !v.InRect(event.Position()) {
+			return false, nil
+		}
+
+		consumed, capture = v.pages.MouseHandler()(action, event, setFocus)
+		if consumed {
+			return
+		}
+
+		return
+	}
 }
 
 func repeat(s string, n int) string {

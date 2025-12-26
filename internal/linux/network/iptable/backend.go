@@ -121,20 +121,32 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 				ruleItem.JumpTarget = parts[i+1]
 				i++
 			}
+		case "-p":
+			if i+1 < len(parts) {
+				ruleItem.Filter.Protocol = parts[i+1]
+				i++
+			}
 		case "-o":
 			if i+1 < len(parts) {
 				ruleItem.Filter.To.Device = parts[i+1]
 				i++
 			}
-		case "--dport":
+		case "-m":
 			if i+1 < len(parts) {
-				ruleItem.Filter.To.Port = parts[i+1]
-				i++
+				ruleItem.Modules = append(ruleItem.Modules, parts[i+1])
+				switch parts[i+1] {
+				case "tcp":
+					b.parseRuleModuleTCP()
+				}
 			}
 		}
 	}
 
 	return ruleItem, nil
+}
+
+func (b *iptableBackend) parseRuleModuleTCP() {
+
 }
 
 func (b *iptableBackend) parseChain(line string) (chain, error) {

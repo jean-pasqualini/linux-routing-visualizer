@@ -40,8 +40,9 @@ var tuiCmd = &cobra.Command{
 
 		ipt := iptable.NewBackend()
 		tables, _ := ipt.ListChains("aeaze")
+		raw := ipt.GetStdout()
 		go func() {
-			mainPanel.ShowTables(app, tables)
+			mainPanel.ShowTables(app, tables, raw)
 		}()
 
 		layout := tview.NewFlex().

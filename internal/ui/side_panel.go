@@ -34,9 +34,7 @@ func NewSidePanel() tview.Primitive {
 	pages.AddPage("Forward", buildCanvas([]string{"PREROUTING", "FORWARD", "POSTROUTING"}), true, true)
 	pages.AddPage("Outbound", buildCanvas([]string{"OUTPUT", "POSTROUTING"}), true, true)
 
-	tabContainer := tab.NewTabPanelHozitonal(pages).SetOnSelect(func(name string) {
-		pages.SwitchToPage(name)
-	})
+	tabContainer := tab.NewTabPanelHozitonal(pages)
 
 	return tabContainer
 }

@@ -13,6 +13,7 @@ type chain struct {
 
 type rule struct {
 	Raw        string
+	Modules    []string
 	Chain      string
 	JumpTarget string
 	Filter     ruleFilter
