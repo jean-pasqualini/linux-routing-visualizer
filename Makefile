@@ -4,8 +4,8 @@ build-docker:
 	docker build -t linux-routing:latest .
 run-docker:
 	docker run --net=host --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go
-run-docker:
-	docker run --net=host --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go tui
+run-docker-tui:
+	docker run --net=host -e TERM=xterm-256color --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go tui
 dev-docker-tui:
 	docker run -d --net=host --pid=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing /app/kill.sh
 	docker run --net=host --pid=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing /app/dev.sh
@@ -41,3 +41,7 @@ nsenter:
 	docker run -it --rm --privileged --pid=host justincormack/nsenter1
 curl:
 	curl 192.168.32.213:9090
+list-tables:
+	ip route show table local
+	ip route show table main
+	ip route show table 2

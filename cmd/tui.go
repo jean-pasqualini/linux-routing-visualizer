@@ -6,7 +6,10 @@ package cmd
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
+	simulator2 "github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/k0kubun/pp"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
@@ -35,15 +38,29 @@ var tuiCmd = &cobra.Command{
 
 		app := tview.NewApplication()
 
+		state.Subscribe("iptables:request", func(name string, event any) {
+			ipt := iptable.NewBackend()
+			tables, _ := ipt.ListChains("aeaze")
+			raw := ipt.GetStdout()
+			state.Dispatch("iptables:response", ui.IpTableResponse{
+				Parsed: tables,
+				Raw:    raw,
+			})
+		})
+		state.Subscribe("simulator_request", func(name string, event any) {
+			if event, ok := event.(simulator.FormEvent); ok {
+				ipt := iptable.NewBackend()
+				tables, _ := ipt.ListChains("aeaze")
+				sim := simulator2.NewIptableSimulator(event, tables)
+				state.Dispatch("simulator_result", simulator.SimulatorResultEvent{
+					Request: event,
+					Rules:   sim.Simulate().Rules,
+				})
+			}
+		})
+
 		tabPanel := ui.NewSidePanel()
 		mainPanel := ui.NewMainPanel()
-
-		ipt := iptable.NewBackend()
-		tables, _ := ipt.ListChains("aeaze")
-		raw := ipt.GetStdout()
-		go func() {
-			mainPanel.ShowTables(app, tables, raw)
-		}()
 
 		layout := tview.NewFlex().
 			AddItem(tabPanel, 50, 0, true).

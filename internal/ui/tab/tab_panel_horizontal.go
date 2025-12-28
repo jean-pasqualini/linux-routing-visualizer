@@ -41,7 +41,7 @@ func (v *TabPanelHorizontal) drawPages(screen tcell.Screen) {
 	}
 
 	// Clamp si pas assez de place
-	topH := 5
+	topH := 3
 	bottomH := h - topH
 
 	if bottomH > 0 {
@@ -89,19 +89,6 @@ func (v *TabPanelHorizontal) drawTabBar(screen tcell.Screen) {
 	}
 }
 
-func (v *TabPanelHorizontal) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-	return func(ev *tcell.EventKey, setFocus func(p tview.Primitive)) {
-		switch ev.Key() {
-		case tcell.KeyTab:
-			v.indexTab++
-			if uint8(len(v.tabNames)) < v.indexTab+1 {
-				v.indexTab = 0
-			}
-			v.pages.SwitchToPage(v.getActiveName())
-		}
-	}
-}
-
 func (v *TabPanelHorizontal) Focus(delegate func(p tview.Primitive)) {
 	delegate(v.pages)
 	return
@@ -124,6 +111,25 @@ func (v *TabPanelHorizontal) MouseHandler() func(action tview.MouseAction, event
 		}
 
 		return
+	}
+}
+
+// InputHandler returns the handler for this primitive.
+func (v *TabPanelHorizontal) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+		switch event.Key() {
+		case tcell.KeyTab:
+			v.indexTab++
+			if uint8(len(v.tabNames)) < v.indexTab+1 {
+				v.indexTab = 0
+			}
+			v.pages.SwitchToPage(v.getActiveName())
+			return
+		}
+		if handler := v.pages.InputHandler(); handler != nil {
+			handler(event, setFocus)
+			return
+		}
 	}
 }
 

@@ -1,17 +1,19 @@
 package iptable
 
-type table struct {
+import "net"
+
+type Table struct {
 	Name   string
 	Chains map[string]*chain
 }
 
 type chain struct {
 	Name   string
-	Rules  []rule
+	Rules  []Rule
 	Policy string
 }
 
-type rule struct {
+type Rule struct {
 	Raw        string
 	Modules    []string
 	Chain      string
@@ -29,12 +31,18 @@ type ruleFilter struct {
 type ruleFilterFromTo struct {
 	Port     string
 	AddrType string
-	Device   string
+	CIDR     *net.IPNet
+	Device   Match[string]
 }
 
 type counter struct {
 	Packets uint64
 	Bytes   uint64
+}
+
+type Match[T any] struct {
+	Value   T
+	negated bool
 }
 
 type protocolType string

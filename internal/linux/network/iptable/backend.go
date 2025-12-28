@@ -16,15 +16,15 @@ func NewBackend() *iptableBackend {
 	return &iptableBackend{}
 }
 
-func (b *iptableBackend) ListChains(_ string) (map[string]table, error) {
-	config, err := b.fetch()
+func (b *iptableBackend) ListChains(_ string) (map[string]Table, error) {
+	config, err := b.Fetch()
 	if err != nil {
 		return nil, err
 	}
 	return config, nil
 }
 
-func (b *iptableBackend) fetch() (map[string]table, error) {
+func (b *iptableBackend) Fetch() (map[string]Table, error) {
 	output, err := b.runProces()
 	b.stdout = output
 	if err != nil {
@@ -37,11 +37,11 @@ func (b *iptableBackend) GetStdout() string {
 	return b.stdout
 }
 
-func (b *iptableBackend) parseTables(input string) (map[string]table, error) {
-	tables := make(map[string]table)
+func (b *iptableBackend) parseTables(input string) (map[string]Table, error) {
+	tables := make(map[string]Table)
 
 	lines := strings.Split(input, "\n")
-	var currentTable table
+	var currentTable Table
 
 	for _, line := range lines {
 		if line == "" {
@@ -51,13 +51,13 @@ func (b *iptableBackend) parseTables(input string) (map[string]table, error) {
 		switch {
 		case strings.HasPrefix(line, "*"):
 			name := strings.TrimPrefix(line, "*")
-			currentTable = table{
+			currentTable = Table{
 				Name:   name,
 				Chains: map[string]*chain{},
 			}
 			tables[name] = currentTable
 		case line == "COMMIT":
-			currentTable = table{}
+			currentTable = Table{}
 		case strings.HasPrefix(line, ":"):
 			chainItem, _ := b.parseChain(line)
 			currentTable.Chains[chainItem.Name] = &chainItem
@@ -73,13 +73,13 @@ func (b *iptableBackend) parseTables(input string) (map[string]table, error) {
 	return tables, nil
 }
 
-func (b *iptableBackend) parseRule(input string) (rule, error) {
+func (b *iptableBackend) parseRule(input string) (Rule, error) {
 	parts := strings.Fields(input)
 	if len(parts) < 3 {
-		return rule{}, errors.New("invalid iptables rule")
+		return Rule{}, errors.New("invalid iptables Rule")
 	}
 	chainName := parts[1]
-	ruleItem := rule{
+	ruleItem := Rule{
 		Chain: chainName,
 		Raw:   input,
 	}
@@ -107,9 +107,22 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 				ruleItem.Filter.Protocol = parts[i+1]
 				i++
 			}
+		case "-i":
+			if i+1 < len(parts) {
+				negated := false
+				if parts[i-1] == "!" {
+					negated = true
+				}
+				ruleItem.Filter.From.Device = Match[string]{Value: parts[i+1], negated: negated}
+				i++
+			}
 		case "-o":
 			if i+1 < len(parts) {
-				ruleItem.Filter.To.Device = parts[i+1]
+				negated := false
+				if parts[i-1] == "!" {
+					negated = true
+				}
+				ruleItem.Filter.To.Device = Match[string]{Value: parts[i+1], negated: negated}
 				i++
 			}
 		case "-m":
@@ -132,7 +145,7 @@ func (b *iptableBackend) parseRule(input string) (rule, error) {
 	return ruleItem, nil
 }
 
-func (b *iptableBackend) parseRuleModuleTCPUDP(input string, ruleItem rule) rule {
+func (b *iptableBackend) parseRuleModuleTCPUDP(input string, ruleItem Rule) Rule {
 	parts := strings.Fields(input)
 
 	for i := 2; i < len(parts); i++ {
@@ -153,7 +166,7 @@ func (b *iptableBackend) parseRuleModuleTCPUDP(input string, ruleItem rule) rule
 	return ruleItem
 }
 
-func (b *iptableBackend) parseRuleModuleConntrack(input string, ruleItem rule) rule {
+func (b *iptableBackend) parseRuleModuleConntrack(input string, ruleItem Rule) Rule {
 	parts := strings.Fields(input)
 
 	for i := 2; i < len(parts); i++ {
@@ -169,7 +182,7 @@ func (b *iptableBackend) parseRuleModuleConntrack(input string, ruleItem rule) r
 	return ruleItem
 }
 
-func (b *iptableBackend) parseRuleModuleAddrType(input string, ruleItem rule) rule {
+func (b *iptableBackend) parseRuleModuleAddrType(input string, ruleItem Rule) Rule {
 	parts := strings.Fields(input)
 
 	for i := 2; i < len(parts); i++ {
@@ -200,7 +213,7 @@ func (b *iptableBackend) parseChain(line string) (chain, error) {
 
 	chain := chain{
 		Name:   name,
-		Rules:  []rule{},
+		Rules:  []Rule{},
 		Policy: parts[1],
 	}
 
