@@ -2,8 +2,6 @@ package simulator
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/form/validator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
@@ -42,7 +40,7 @@ func NewSimulatorPanel() tview.Primitive {
 	}
 	c.textView.SetBackgroundColor(tcell.ColorPowderBlue)
 	c.textView.SetBorder(true)
-	c.textView.SetBorderPadding(2, 2, 2, 2)
+	c.textView.SetBorderPadding(0, 0, 2, 2)
 
 	formSource := tview.NewForm().
 		AddInputField("IP", "", 20, validator.IpValidator, func(text string) {
@@ -67,13 +65,18 @@ func NewSimulatorPanel() tview.Primitive {
 		}).
 		AddInputField("Device", "", 6, validator.DeviceValidator, func(text string) {
 			formEvent.Target.Device = text
-		}).
-		AddDropDown("Protocol", []string{"TCP", "UDP"}, 0, func(option string, _ int) {
-			formEvent.Protocol = option
 		})
 	formTarget.SetFieldBackgroundColor(tcell.ColorWhite)
 	formTarget.SetBorder(true)
 	formTarget.SetTitle("Target")
+
+	formGeneral := tview.NewForm().
+		AddDropDown("Protocol", []string{"TCP", "UDP"}, 0, func(option string, _ int) {
+			formEvent.Protocol = option
+		})
+	formGeneral.SetFieldBackgroundColor(tcell.ColorWhite)
+	formGeneral.SetBorder(true)
+	formGeneral.SetTitle("General")
 
 	simulateButton := tview.NewButton("SIMULATE").SetSelectedFunc(func() {
 		state.Dispatch("logger", "je suis cliqué")
@@ -85,7 +88,8 @@ func NewSimulatorPanel() tview.Primitive {
 	formFlex.AddItem(formTarget, 0, 1, false)
 
 	flex.SetDirection(tview.FlexRow)
-	flex.AddItem(formFlex, 15, 0, true)
+	flex.AddItem(formGeneral, 5, 0, false)
+	flex.AddItem(formFlex, 9, 0, false)
 	flex.AddItem(simulateButton, 3, 0, false)
 	flex.AddItem(c.textView, 0, 1, false)
 	flex.AddItem(c.logView, 0, 1, false)
@@ -115,8 +119,6 @@ func (s *simulatorPanel) showResult(name string, event any) {
 	defer w.Close()
 	w.Clear()
 	if event, ok := event.(SimulatorResultEvent); ok {
-		fmt.Fprintf(w, strings.Repeat("=", 15)+"\n")
-
 		for _, rule := range event.Rules {
 			icon := "❌"
 			if rule.Matched {
