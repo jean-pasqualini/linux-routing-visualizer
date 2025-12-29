@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
 	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
@@ -38,7 +39,9 @@ func (h *AppHandler) Handle(context context.Context) {
 	}
 	iptSim := simulator.NewIptableSimulator(
 		uisimulator.FormEvent{
-			TargetIP: "8.8.8.8",
+			Target: uisimulator.FormEventTarget{
+				IP: "8.8.8.8",
+			},
 		},
 		tables,
 	)

@@ -2,18 +2,24 @@ package simulator
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/form/validator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/rivo/tview"
-	"strings"
 )
 
+type FormEventTarget struct {
+	Device string
+	IP     string
+	Port   string
+}
+
 type FormEvent struct {
-	SourceIP   string
-	TargetIP   string
-	TargetPort string
-	Protocol   string
+	Source   FormEventTarget
+	Target   FormEventTarget
+	Protocol string
 }
 
 type SimulatorResultRuleEvent struct {
@@ -26,10 +32,7 @@ type SimulatorResultEvent struct {
 }
 
 func NewSimulatorPanel() tview.Primitive {
-	var sourceIP string
-	var targetIP string
-	var targetPort string
-	var protocol string = "TCP"
+	var formEvent FormEvent
 
 	flex := tview.NewFlex()
 	c := simulatorPanel{
@@ -41,32 +44,49 @@ func NewSimulatorPanel() tview.Primitive {
 	c.textView.SetBorder(true)
 	c.textView.SetBorderPadding(2, 2, 2, 2)
 
-	form := tview.NewForm().
-		AddInputField("Source IP", "", 20, validator.IpValidator, func(text string) {
-			sourceIP = text
+	formSource := tview.NewForm().
+		AddInputField("IP", "", 20, validator.IpValidator, func(text string) {
+			formEvent.Source.IP = text
 		}).
-		AddInputField("Target IP", "", 20, validator.IpValidator, func(text string) {
-			targetIP = text
+		AddInputField("Port", "", 6, validator.PortValidator, func(text string) {
+			formEvent.Source.Port = text
 		}).
-		AddInputField("Target Port", "", 6, validator.PortValidator, func(text string) {
-			targetPort = text
+		AddInputField("Device", "", 6, validator.DeviceValidator, func(text string) {
+			formEvent.Source.Device = text
+		})
+	formSource.SetFieldBackgroundColor(tcell.ColorWhite)
+	formSource.SetBorder(true)
+	formSource.SetTitle("Source")
+
+	formTarget := tview.NewForm().
+		AddInputField("IP", "", 20, validator.IpValidator, func(text string) {
+			formEvent.Target.IP = text
+		}).
+		AddInputField("Port", "", 6, validator.PortValidator, func(text string) {
+			formEvent.Target.Port = text
+		}).
+		AddInputField("Device", "", 6, validator.DeviceValidator, func(text string) {
+			formEvent.Target.Device = text
 		}).
 		AddDropDown("Protocol", []string{"TCP", "UDP"}, 0, func(option string, _ int) {
-			protocol = option
-		}).
-		AddButton("Simulate", func() {
-			state.Dispatch("simulator_request", FormEvent{
-				SourceIP:   sourceIP,
-				TargetIP:   targetIP,
-				TargetPort: targetPort,
-				Protocol:   protocol,
-			})
+			formEvent.Protocol = option
 		})
-	form.SetFieldBackgroundColor(tcell.ColorWhite)
-	form.SetBorder(true)
+	formTarget.SetFieldBackgroundColor(tcell.ColorWhite)
+	formTarget.SetBorder(true)
+	formTarget.SetTitle("Target")
+
+	simulateButton := tview.NewButton("SIMULATE").SetSelectedFunc(func() {
+		state.Dispatch("logger", "je suis cliqué")
+		state.Dispatch("simulator_request", formEvent)
+	})
+
+	formFlex := tview.NewFlex()
+	formFlex.AddItem(formSource, 0, 1, false)
+	formFlex.AddItem(formTarget, 0, 1, false)
 
 	flex.SetDirection(tview.FlexRow)
-	flex.AddItem(form, 15, 0, true)
+	flex.AddItem(formFlex, 15, 0, true)
+	flex.AddItem(simulateButton, 3, 0, false)
 	flex.AddItem(c.textView, 0, 1, false)
 	flex.AddItem(c.logView, 0, 1, false)
 
@@ -95,11 +115,6 @@ func (s *simulatorPanel) showResult(name string, event any) {
 	defer w.Close()
 	w.Clear()
 	if event, ok := event.(SimulatorResultEvent); ok {
-		fmt.Fprintf(w, strings.Repeat("=", 15)+"\n")
-		fmt.Fprintf(w, "SRC: %s\n", event.Request.SourceIP)
-		fmt.Fprintf(w, "DEST: %s\n", event.Request.TargetIP)
-		fmt.Fprintf(w, "DPORT: %s\n", event.Request.TargetPort)
-		fmt.Fprintf(w, "PROTOCOL: %s\n", event.Request.Protocol)
 		fmt.Fprintf(w, strings.Repeat("=", 15)+"\n")
 
 		for _, rule := range event.Rules {

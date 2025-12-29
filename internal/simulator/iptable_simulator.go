@@ -1,12 +1,13 @@
 package simulator
 
 import (
+	"net"
+	"syscall"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/vishvananda/netlink"
-	"net"
-	"syscall"
 )
 
 type IptableSimulator struct {
@@ -27,13 +28,13 @@ func NewIptableSimulator(query simulator.FormEvent, tables map[string]iptable.Ta
 }
 
 func (s *IptableSimulator) Match(query simulator.FormEvent, rule iptable.Rule) bool {
-	if rule.Filter.To.Port != "" && rule.Filter.To.Port != query.TargetPort {
+	if rule.Filter.To.Port != "" && rule.Filter.To.Port != query.Target.Port {
 		return false
 	}
-	if rule.Filter.From.CIDR != nil && false {
+	if rule.Filter.From.CIDR != nil && rule.Filter.From.CIDR.Contains(net.ParseIP(query.Target.IP)) {
 		return false
 	}
-	if rule.Filter.To.CIDR != nil && rule.Filter.To.CIDR.Contains(net.ParseIP(query.TargetIP)) {
+	if rule.Filter.To.CIDR != nil && rule.Filter.To.CIDR.Contains(net.ParseIP(query.Target.IP)) {
 		return false
 	}
 	return true
@@ -73,7 +74,7 @@ func (s *IptableSimulator) enterTable(tableName string, chainName string) {
 }
 
 func (s *IptableSimulator) Simulate() simulator.SimulatorResultEvent {
-	targetIP := net.ParseIP(s.query.TargetIP)
+	targetIP := net.ParseIP(s.query.Target.IP)
 	if targetIP == nil {
 		state.Dispatch("logger", "invalid target ip")
 		return simulator.SimulatorResultEvent{}
