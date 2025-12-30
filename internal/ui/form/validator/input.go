@@ -30,6 +30,9 @@ func DeviceValidator(textToCheck string, lastChar rune) bool {
 	if unicode.IsLetter(lastChar) {
 		return true
 	}
+	if unicode.IsDigit(lastChar) {
+		return true
+	}
 
 	return false
 }

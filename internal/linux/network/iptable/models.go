@@ -40,9 +40,23 @@ type counter struct {
 	Bytes   uint64
 }
 
-type Match[T any] struct {
+type Match[T comparable] struct {
 	Value   T
 	negated bool
+}
+
+func (m Match[string]) Match(value string) bool {
+	var zero string
+	if zero == m.Value {
+		return true
+	}
+	if value == m.Value && !m.negated {
+		return true
+	}
+	if value != m.Value && m.negated {
+		return true
+	}
+	return false
 }
 
 type protocolType string

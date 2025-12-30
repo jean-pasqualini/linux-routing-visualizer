@@ -3,9 +3,12 @@ package iptable
 import (
 	"bytes"
 	"errors"
+	"net"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 )
 
 type iptableBackend struct {
@@ -105,6 +108,21 @@ func (b *iptableBackend) parseRule(input string) (Rule, error) {
 		case "-p":
 			if i+1 < len(parts) {
 				ruleItem.Filter.Protocol = parts[i+1]
+				i++
+			}
+		case "-s":
+			if i+1 < len(parts) {
+				_, CIDR, err := net.ParseCIDR(parts[i+1])
+				if err != nil {
+					state.Dispatch("logger", "!!!!!!!!!!!! PARSING CIDR FAIL : "+err.Error())
+				}
+				ruleItem.Filter.From.CIDR = CIDR
+				i++
+			}
+		case "-d":
+			if i+1 < len(parts) {
+				_, CIDR, _ := net.ParseCIDR(parts[i+1])
+				ruleItem.Filter.To.CIDR = CIDR
 				i++
 			}
 		case "-i":

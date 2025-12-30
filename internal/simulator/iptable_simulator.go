@@ -22,37 +22,95 @@ func NewIptableSimulator(query simulator.FormEvent, tables map[string]iptable.Ta
 		tables: tables,
 		result: simulator.SimulatorResultEvent{
 			Request: query,
-			Rules:   []simulator.SimulatorResultRuleEvent{},
+			Rules:   make([]simulator.SimulatorResultRuleEvent, 0),
+			Chains:  make([]simulator.SimulatorResultChainEvent, 0),
 		},
 	}
 }
 
-func (s *IptableSimulator) Match(query simulator.FormEvent, rule iptable.Rule) bool {
+func (s *IptableSimulator) Match(query simulator.FormEvent, rule iptable.Rule) (bool, []string) {
+	reasons := make([]string, 0)
+	// Protocl
+	if rule.Filter.Protocol != "" && rule.Filter.Protocol != query.Protocol {
+		state.Dispatch("logger", "\t\t\t -> filter: protocol mismatch")
+		reasons = append(reasons, "protocol mismatch")
+	}
+	// Device
+	if !rule.Filter.From.Device.Match(query.Source.Device) {
+		state.Dispatch("logger", "\t\t\t -> filter: source device mismatch")
+		reasons = append(reasons, "source device mismatch")
+	}
+	if !rule.Filter.To.Device.Match(query.Target.Device) {
+		state.Dispatch("logger", "\t\t\t -> filter: target device mismatch")
+		reasons = append(reasons, "target device mismatch")
+	}
+	// Port
+	if rule.Filter.From.Port != "" && rule.Filter.From.Port != query.Source.Port {
+		state.Dispatch("logger", "\t\t\t -> filter: source port mismatch")
+		reasons = append(reasons, "source port mismatch")
+	}
 	if rule.Filter.To.Port != "" && rule.Filter.To.Port != query.Target.Port {
-		return false
+		state.Dispatch("logger", "\t\t\t -> filter: target port mismatch")
+		reasons = append(reasons, "target port mismatch")
 	}
-	if rule.Filter.From.CIDR != nil && rule.Filter.From.CIDR.Contains(net.ParseIP(query.Target.IP)) {
-		return false
+	// Cidr
+	if rule.Filter.From.CIDR != nil && !rule.Filter.From.CIDR.Contains(net.ParseIP(query.Source.IP)) {
+		state.Dispatch("logger", "\t\t\t -> filter: source cidr mismatch")
+		reasons = append(reasons, "source cidr mismatch")
 	}
-	if rule.Filter.To.CIDR != nil && rule.Filter.To.CIDR.Contains(net.ParseIP(query.Target.IP)) {
-		return false
+	if rule.Filter.To.CIDR != nil && !rule.Filter.To.CIDR.Contains(net.ParseIP(query.Target.IP)) {
+		state.Dispatch("logger", "\t\t\t -> filter: target cidr mismatch")
+		reasons = append(reasons, "target cidr mismatch")
 	}
-	return true
+	return len(reasons) == 0, reasons
 }
 
 func (s *IptableSimulator) enterChain(tableName string, chainName string) {
 	if chain, ok := s.tables[tableName].Chains[chainName]; ok {
 		state.Dispatch("logger", "\t -> enter chain "+chainName)
 		for _, rule := range chain.Rules {
+
+			matchingResult, reasons := s.Match(s.query, rule)
 			ruleMatching := simulator.SimulatorResultRuleEvent{
 				Raw:     rule.Raw,
-				Matched: s.Match(s.query, rule),
+				Matched: matchingResult,
 			}
 			state.Dispatch("logger", "\t\t -> should add rule "+ruleMatching.Raw)
+			if !matchingResult {
+				state.Dispatch("logger", "\t\t -> matching fail")
+				for _, reason := range reasons {
+					state.Dispatch("logger", "\t\t\t -> filter: "+reason)
+				}
+			}
+
 			s.result.Rules = append(s.result.Rules, ruleMatching)
 			if ruleMatching.Matched {
+				if rule.JumpTarget == "ACCEPT" || rule.JumpTarget == "DROP" || rule.JumpTarget == "REJECT" || rule.JumpTarget == "RETURN" {
+					s.result.Chains = append(s.result.Chains, simulator.SimulatorResultChainEvent{
+						Name:     chainName,
+						Decision: rule.JumpTarget,
+					})
+					state.Dispatch("logger", "\t\t\t -> final decision "+rule.JumpTarget+" for that chain ")
+					return
+				}
+				if rule.JumpTarget == "TRACE" {
+					state.Dispatch("logger", "\t\t\t -> tracing enable")
+				}
+				if rule.JumpTarget == "DNAT" {
+					state.Dispatch("logger", "\t\t\t -> dnat")
+				}
+				if rule.JumpTarget == "MASQUERADE" {
+					state.Dispatch("logger", "\t\t\t -> masquerade")
+				}
 				s.enterChain(tableName, rule.JumpTarget)
 			}
+		}
+		if chain.Policy != "-" {
+			s.result.Chains = append(s.result.Chains, simulator.SimulatorResultChainEvent{
+				Name:     chainName,
+				Decision: chain.Policy,
+			})
+			state.Dispatch("logger", "\t\t\t -> final decision "+chain.Policy+" for that chain ")
 		}
 	} else {
 		state.Dispatch("logger", "\t -> not found chain "+chainName)
@@ -74,6 +132,11 @@ func (s *IptableSimulator) enterTable(tableName string, chainName string) {
 }
 
 func (s *IptableSimulator) Simulate() simulator.SimulatorResultEvent {
+	sourceIP := net.ParseIP(s.query.Target.IP)
+	if sourceIP == nil {
+		state.Dispatch("logger", "invalid source ip")
+		return simulator.SimulatorResultEvent{}
+	}
 	targetIP := net.ParseIP(s.query.Target.IP)
 	if targetIP == nil {
 		state.Dispatch("logger", "invalid target ip")

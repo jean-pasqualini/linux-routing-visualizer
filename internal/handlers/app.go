@@ -42,6 +42,9 @@ func (h *AppHandler) Handle(context context.Context) {
 			Target: uisimulator.FormEventTarget{
 				IP: "8.8.8.8",
 			},
+			Source: uisimulator.FormEventTarget{
+				IP: "8.8.4.4",
+			},
 		},
 		tables,
 	)

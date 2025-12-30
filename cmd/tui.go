@@ -21,6 +21,8 @@ var tuiCmd = &cobra.Command{
 	Short: "A tui test",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		//tview.Borders.Horizontal = '⎺'
+		//tview.Borders.Vertical = '▌'
 		pp.SetColorScheme(pp.ColorScheme{
 			Bool:            pp.NoColor,
 			Integer:         pp.NoColor,
@@ -52,10 +54,7 @@ var tuiCmd = &cobra.Command{
 				ipt := iptable.NewBackend()
 				tables, _ := ipt.ListChains("aeaze")
 				sim := simulator2.NewIptableSimulator(event, tables)
-				state.Dispatch("simulator_result", simulator.SimulatorResultEvent{
-					Request: event,
-					Rules:   sim.Simulate().Rules,
-				})
+				state.Dispatch("simulator_result", sim.Simulate())
 			}
 		})
 
