@@ -4,28 +4,56 @@ import (
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/tab"
 	"github.com/rivo/tview"
 )
 
 func NewResultView() *ResultView {
 	textView := tview.NewTextView()
-
 	textView.SetBackgroundColor(tcell.ColorDarkBlue)
 	textView.SetDynamicColors(true)
 	textView.SetBorder(true)
 	textView.SetTextColor(tcell.ColorWhite)
 	textView.SetBorderPadding(0, 0, 2, 2)
-	return &ResultView{
-		TextView: textView,
+	logView := tview.NewTextView()
+	pages := tview.NewPages()
+	pages.AddPage("Logs", logView, true, false)
+	pages.AddPage("Rules", textView, true, true)
+	rView := &ResultView{
+		TabPanelHorizontal: tab.NewTabPanelHozitonal(pages),
+		textView:           textView,
+		logView:            logView,
 	}
+	
+	state.Subscribe("simulator_result", rView.showResult)
+	state.Subscribe("logger", rView.addLog)
+
+	return rView
 }
 
 type ResultView struct {
-	*tview.TextView
+	*tab.TabPanelHorizontal
+	textView *tview.TextView
+	logView  *tview.TextView
+}
+
+func (s *ResultView) showResult(name string, event any) {
+	if event, ok := event.(SimulatorResultEvent); ok {
+		s.SetResult(event)
+	}
+}
+
+func (s *ResultView) addLog(name string, event any) {
+	w := s.logView.BatchWriter()
+	defer w.Close()
+	if event, ok := event.(string); ok {
+		fmt.Fprintln(w, event)
+	}
 }
 
 func (v *ResultView) SetResult(result SimulatorResultEvent) {
-	w := v.TextView.BatchWriter()
+	w := v.textView.BatchWriter()
 	defer w.Close()
 	w.Clear()
 	fmt.Fprintf(w, "Chains (%d) :\n", len(result.Chains))

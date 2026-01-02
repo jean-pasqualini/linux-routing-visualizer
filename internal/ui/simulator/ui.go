@@ -1,9 +1,6 @@
 package simulator
 
 import (
-	"fmt"
-
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/rivo/tview"
 )
 
@@ -39,16 +36,11 @@ func NewSimulatorPanel() tview.Primitive {
 	c := simulatorPanel{
 		Flex:       flex,
 		resultView: NewResultView(),
-		logView:    tview.NewTextView(),
 	}
 
 	flex.SetDirection(tview.FlexRow)
 	flex.AddItem(NewForm(), 18, 0, false)
 	flex.AddItem(c.resultView, 0, 1, false)
-	flex.AddItem(c.logView, 0, 1, false)
-
-	state.Subscribe("simulator_result", c.showResult)
-	state.Subscribe("logger", c.addLog)
 
 	return c
 }
@@ -56,19 +48,4 @@ func NewSimulatorPanel() tview.Primitive {
 type simulatorPanel struct {
 	*tview.Flex
 	resultView *ResultView
-	logView    *tview.TextView
-}
-
-func (s *simulatorPanel) addLog(name string, event any) {
-	w := s.logView.BatchWriter()
-	defer w.Close()
-	if event, ok := event.(string); ok {
-		fmt.Fprintln(w, event)
-	}
-}
-
-func (s *simulatorPanel) showResult(name string, event any) {
-	if event, ok := event.(SimulatorResultEvent); ok {
-		s.resultView.SetResult(event)
-	}
 }

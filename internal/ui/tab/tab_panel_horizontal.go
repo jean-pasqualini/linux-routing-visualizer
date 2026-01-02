@@ -117,15 +117,18 @@ func (v *TabPanelHorizontal) MouseHandler() func(action tview.MouseAction, event
 // InputHandler returns the handler for this primitive.
 func (v *TabPanelHorizontal) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
-		switch event.Key() {
-		case tcell.KeyTab:
-			v.indexTab++
-			if uint8(len(v.tabNames)) < v.indexTab+1 {
-				v.indexTab = 0
+		if v.HasFocus() {
+			switch event.Key() {
+			case tcell.KeyTab:
+				v.indexTab++
+				if uint8(len(v.tabNames)) < v.indexTab+1 {
+					v.indexTab = 0
+				}
+				v.pages.SwitchToPage(v.getActiveName())
+				return
 			}
-			v.pages.SwitchToPage(v.getActiveName())
-			return
 		}
+
 		if handler := v.pages.InputHandler(); handler != nil {
 			handler(event, setFocus)
 			return
