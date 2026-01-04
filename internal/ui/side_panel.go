@@ -51,13 +51,11 @@ func NewSidePanel() tview.Primitive {
 		SetWrap(false). // important pour ANSI
 		SetDynamicColors(true)
 	*/
-	pages := tview.NewPages()
-	pages.AddPage("Tables", buildCanvas(listFromTables(iptable.TablesList[:])), true, true)
-	pages.AddPage("Inbound", buildCanvas(listFromChains(iptable.InboundChaining[:])), true, true)
-	pages.AddPage("Forward", buildCanvas(listFromChains(iptable.ForwardChaining[:])), true, true)
-	pages.AddPage("Outbound", buildCanvas(listFromChains(iptable.OutboundChaining[:])), true, true)
-
-	tabContainer := tab.NewTabPanelHozitonal(pages)
+	tabContainer := tab.NewTabPanelHozitonal(tview.NewPages())
+	tabContainer.AddPage("Tables", buildCanvas(listFromTables(iptable.TablesList[:])), true, true)
+	tabContainer.AddPage("Inbound", buildCanvas(listFromChains(iptable.InboundChaining[:])), true, true)
+	tabContainer.AddPage("Forward", buildCanvas(listFromChains(iptable.ForwardChaining[:])), true, true)
+	tabContainer.AddPage("Outbound", buildCanvas(listFromChains(iptable.OutboundChaining[:])), true, true)
 
 	return tabContainer
 }

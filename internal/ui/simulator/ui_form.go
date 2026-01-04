@@ -2,6 +2,7 @@ package simulator
 
 import (
 	"github.com/gdamore/tcell/v2"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/link"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/form/validator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/rivo/tview"
@@ -19,6 +20,7 @@ func NewForm() *Form {
 
 func BuildForm() *tview.Flex {
 	var formEvent FormEvent
+	linkBackend := link.NewLinkBackend()
 
 	formSource := tview.NewForm().
 		AddInputField("IP", "", 20, validator.IpValidator, func(text string) {
@@ -27,12 +29,13 @@ func BuildForm() *tview.Flex {
 		AddInputField("Port", "", 6, validator.PortValidator, func(text string) {
 			formEvent.Source.Port = text
 		}).
-		AddInputField("Device", "", 10, validator.DeviceValidator, func(text string) {
-			formEvent.Source.Device = text
+		AddDropDown("Device", linkBackend.GetInterfacesNames(), 0, func(option string, _ int) {
+			formEvent.Source.Device = option
 		})
 	formSource.SetFieldBackgroundColor(tcell.ColorWhite)
 	formSource.SetFieldTextColor(tcell.ColorBlack)
 	formSource.SetBorder(true)
+	formSource.SetBorderColor(tcell.ColorMediumPurple)
 	formSource.SetTitle("Source")
 
 	formTarget := tview.NewForm().
@@ -42,11 +45,12 @@ func BuildForm() *tview.Flex {
 		AddInputField("Port", "", 6, validator.PortValidator, func(text string) {
 			formEvent.Target.Port = text
 		}).
-		AddInputField("Device", "", 10, validator.DeviceValidator, func(text string) {
-			formEvent.Target.Device = text
+		AddDropDown("Device", linkBackend.GetInterfacesNames(), 0, func(option string, _ int) {
+			formEvent.Target.Device = option
 		})
 	formTarget.SetFieldBackgroundColor(tcell.ColorWhite)
 	formTarget.SetFieldTextColor(tcell.ColorBlack)
+	formTarget.SetBorderColor(tcell.ColorMediumPurple)
 	formTarget.SetBorder(true)
 	formTarget.SetTitle("Target")
 
@@ -55,10 +59,11 @@ func BuildForm() *tview.Flex {
 			formEvent.Protocol = option
 		}).
 		AddDropDown("State", []string{"NONE", "RELATED", "ESTABLISHED"}, 0, func(option string, _ int) {
-			formEvent.Protocol = option
+			formEvent.State = option
 		})
 	formGeneral.SetFieldBackgroundColor(tcell.ColorWhite)
 	formGeneral.SetFieldTextColor(tcell.ColorBlack)
+	formGeneral.SetBorderColor(tcell.ColorMediumPurple)
 	formGeneral.SetBorder(true)
 	formGeneral.SetTitle("General")
 

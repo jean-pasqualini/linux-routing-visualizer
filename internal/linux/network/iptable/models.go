@@ -23,7 +23,7 @@ type Rule struct {
 
 type ruleFilter struct {
 	Protocol        string
-	ConnectionState string
+	ConnectionState []string
 	To              ruleFilterFromTo
 	From            ruleFilterFromTo
 }

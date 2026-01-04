@@ -6,9 +6,10 @@ package cmd
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
-	simulator2 "github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
+	simulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
+	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/k0kubun/pp"
 	"github.com/rivo/tview"
@@ -40,6 +41,14 @@ var tuiCmd = &cobra.Command{
 
 		app := tview.NewApplication()
 
+		logger := logging.NewFilelogger()
+
+		state.Subscribe("logger", func(name string, event any) {
+			if msg, ok := event.(string); ok {
+				logger.Debug(msg)
+			}
+		})
+
 		state.Subscribe("iptables:request", func(name string, event any) {
 			ipt := iptable.NewBackend()
 			tables, _ := ipt.ListChains("aeaze")
@@ -50,10 +59,23 @@ var tuiCmd = &cobra.Command{
 			})
 		})
 		state.Subscribe("simulator_request", func(name string, event any) {
-			if event, ok := event.(simulator.FormEvent); ok {
+			if event, ok := event.(uisimulator.FormEvent); ok {
 				ipt := iptable.NewBackend()
 				tables, _ := ipt.ListChains("aeaze")
-				sim := simulator2.NewIptableSimulator(event, tables)
+				sim := simulator.NewSimulator(simulator.SimulatorQuery{
+					State:    event.State,
+					Protocol: event.Protocol,
+					Source: simulator.SimulatorQueryTarget{
+						Device: event.Source.Device,
+						IP:     event.Source.IP,
+						Port:   event.Source.Port,
+					},
+					Target: simulator.SimulatorQueryTarget{
+						Device: event.Target.Device,
+						IP:     event.Target.IP,
+						Port:   event.Target.Port,
+					},
+				}, tables)
 				state.Dispatch("simulator_result", sim.Simulate())
 			}
 		})

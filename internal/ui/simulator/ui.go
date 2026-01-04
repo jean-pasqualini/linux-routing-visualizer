@@ -13,21 +13,8 @@ type FormEventTarget struct {
 type FormEvent struct {
 	Source   FormEventTarget
 	Target   FormEventTarget
+	State    string
 	Protocol string
-}
-
-type SimulatorResultRuleEvent struct {
-	Raw     string
-	Matched bool
-}
-type SimulatorResultChainEvent struct {
-	Name     string
-	Decision string
-}
-type SimulatorResultEvent struct {
-	Request FormEvent
-	Rules   []SimulatorResultRuleEvent
-	Chains  []SimulatorResultChainEvent
 }
 
 func NewSimulatorPanel() tview.Primitive {

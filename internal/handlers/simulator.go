@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
-	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/k0kubun/pp"
 
@@ -13,14 +12,14 @@ import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 )
 
-type AppHandler struct {
+type SimulatorHandler struct {
 }
 
-func NewAppHandler() *AppHandler {
-	return &AppHandler{}
+func NewSimulatorHandler() *SimulatorHandler {
+	return &SimulatorHandler{}
 }
 
-func (h *AppHandler) Handle(context context.Context) {
+func (h *SimulatorHandler) Handle(context context.Context) {
 	logger := logging.FromContext(context)
 	logger.Debug("Handling request")
 	fmt.Println("Hello World")
@@ -37,12 +36,12 @@ func (h *AppHandler) Handle(context context.Context) {
 		logger.Error("an error: " + err.Error())
 		return
 	}
-	iptSim := simulator.NewIptableSimulator(
-		uisimulator.FormEvent{
-			Target: uisimulator.FormEventTarget{
+	iptSim := simulator.NewSimulator(
+		simulator.SimulatorQuery{
+			Target: simulator.SimulatorQueryTarget{
 				IP: "8.8.8.8",
 			},
-			Source: uisimulator.FormEventTarget{
+			Source: simulator.SimulatorQueryTarget{
 				IP: "8.8.4.4",
 			},
 		},

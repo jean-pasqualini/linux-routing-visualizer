@@ -191,7 +191,8 @@ func (b *iptableBackend) parseRuleModuleConntrack(input string, ruleItem Rule) R
 		switch parts[i] {
 		case "--ctstate":
 			if i+1 < len(parts) {
-				ruleItem.Filter.ConnectionState = parts[i+1]
+				states := strings.Split(parts[i+1], ",")
+				ruleItem.Filter.ConnectionState = states
 				i++
 			}
 		}

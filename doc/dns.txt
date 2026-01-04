@@ -1,0 +1,115 @@
+Ces cinq éléments forment en réalité **le “monde réel” de la résolution de noms sous Linux** — et c’est exactement ce que le resolver Go **ignore** quand il fonctionne en mode pur.
+
+Je te les détaille un par un.
+
+---
+
+# 1️⃣ `/etc/nsswitch.conf` — le chef d’orchestre
+
+Fichier qui dit à la libc **où chercher les noms** et dans quel ordre.
+
+Exemple :
+
+```text
+hosts: files mdns4_minimal [NOTFOUND=return] dns mymachines
+```
+
+Signification :
+
+1. `files` → `/etc/hosts`
+2. `mdns4_minimal` → Avahi (mDNS)
+3. `dns` → serveurs DNS
+4. `mymachines` → systemd-resolved
+
+👉 Le resolver Go ignore totalement ce fichier.
+
+---
+
+# 2️⃣ `systemd-resolved`
+
+Service local qui gère :
+
+* cache DNS
+* split DNS
+* DNS par interface (VPN / WiFi)
+* DNSSEC
+* DNS-over-TLS
+
+Quand libc résout :
+
+```
+getaddrinfo() → nss → systemd-resolved → DNS réel
+```
+
+Go pur parle directement au serveur DNS →
+**ne voit pas le split DNS ni le cache local.**
+
+---
+
+# 3️⃣ LDAP / NIS
+
+Dans beaucoup d’entreprises :
+
+```text
+hosts: files ldap dns
+```
+
+Les noms internes sont stockés dans LDAP.
+
+* libc → LDAP → OK
+* Go pur → DNS only → ❌ impossible
+
+---
+
+# 4️⃣ mDNS / Avahi (`.local`)
+
+Résolution multicast locale :
+
+```
+imprimante.local
+macbook.local
+```
+
+Fourni par Avahi.
+
+* libc → Avahi → OK
+* Go pur → DNS unicast → timeout
+
+---
+
+# 5️⃣ Split-horizon DNS corporate
+
+VPN activé :
+
+| Domaine  | DNS utilisé          |
+| -------- | -------------------- |
+| `*.corp` | DNS interne 10.0.0.1 |
+| `*`      | DNS public 1.1.1.1   |
+
+libc via systemd-resolved choisit le bon serveur **selon l’interface réseau**.
+
+Go pur lit juste `/etc/resolv.conf` →
+envoie la requête au mauvais DNS.
+
+---
+
+# 🧨 Pourquoi c’est dangereux
+
+Ton programme Go peut marcher :
+
+* sur ton laptop perso
+* dans un container
+
+…et **tomber en panne totale** en prod corporate.
+
+---
+
+# 🧩 Conclusion
+
+| Resolver   | Monde réel                            |
+| ---------- | ------------------------------------- |
+| Go pur     | simple, rapide, cloud-friendly        |
+| libc / NSS | complexe, lent, entreprise-compatible |
+
+Go pur voit **le DNS du labo**.
+libc voit **le DNS de l’entreprise**.

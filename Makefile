@@ -1,16 +1,53 @@
+DOCKER_RUN = docker run -e TERM=xterm-256color --net=host --pid=host --privileged \
+	-w /app \
+	-v go-build-cache:/root/.cache/go-build \
+	-v go-module-cache:/root/go/pkg/mod \
+	-v $(CURDIR):/app \
+	--rm -it linux-routing
+
+DOCKER_RUN_NO_CGO = docker run -e TERM=xterm-256color -e CGO_ENABLED=0 --net=host --pid=host --privileged \
+	-w /app \
+	-v go-build-cache:/root/.cache/go-build \
+	-v go-module-cache:/root/go/pkg/mod \
+	-v $(CURDIR):/app \
+	--rm -it linux-routing
+
+DOCKER_RUN_DETACHED = docker run -d -e TERM=xterm-256color --net=host --privileged \
+	-w /app \
+	-v go-build-cache:/root/.cache/go-build \
+	-v go-module-cache:/root/go/pkg/mod \
+	-v $(CURDIR):/app \
+	--rm -it linux-routing
+
 setcap:
 	sudo setcap cap_net_admin+ep /usr/sbin/xtables-nft-multi
 build-docker:
 	docker build -t linux-routing:latest .
+run-docker-list:
+	$(DOCKER_RUN) go run main.go
+run-docker-sniff:
+	$(DOCKER_RUN) go run -tags medium main.go libpcap-dev -i eth0
+run-docker-socket:
+	$(DOCKER_RUN_NO_CGO) go run -tags medium main.go socket
+run-docker-iptable:
+	$(DOCKER_RUN) go run main.go iptable
+run-docker-link:
+	$(DOCKER_RUN) go run main.go link
+run-docker-ipvs:
+	$(DOCKER_RUN) go run main.go ipvs
+run-docker-sysctl:
+	$(DOCKER_RUN) go run main.go sysctl
+run-docker-routing:
+	$(DOCKER_RUN) go run main.go routing
 run-docker-bubble:
-	docker run --net=host --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go bubble
+	$(DOCKER_RUN) go run main.go bubble
 run-docker-simulate:
-	docker run --net=host --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go simulate
+	$(DOCKER_RUN) go run main.go simulate
 run-docker-tui:
-	docker run --net=host -e TERM=xterm-256color --privileged -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing go run main.go tui
+	$(DOCKER_RUN) go run main.go tui
 dev-docker-tui:
-	docker run -d --net=host --pid=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing /app/kill.sh
-	docker run --net=host --pid=host --privileged -e TERM=xterm-256color -w /app -v go-build-cache:/root/.cache/go-build -v go-module-cache:/root/go/pkg/mod -v $(CURDIR):/app --rm -it linux-routing /app/dev.sh
+	$(DOCKER_RUN_DETACHED) /app/kill.sh
+	$(DOCKER_RUN) /app/dev.sh
 enter-docker:
 	docker run --rm -it --net=host --privileged linux-routing bash
 clean-trace:
@@ -47,3 +84,6 @@ list-tables:
 	ip route show table local
 	ip route show table main
 	ip route show table 2
+man:
+	docker build -t linux-man -f Dockerfile.man .
+	docker run --rm -it linux-man man iptables

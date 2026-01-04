@@ -1,0 +1,16 @@
+FROM alpine:3.19
+
+RUN apk add --no-cache \
+    mandoc \
+    mandoc-apropos \
+    man-pages \
+    iptables \
+    iptables-doc \
+    iproute2 \
+    iproute2-doc \
+    less \
+    coreutils \
+    util-linux \
+    util-linux-doc \
+    busybox-extras
+CMD ["/bin/sh"]

@@ -31,13 +31,13 @@ func NewMainPanel() *MainPanel {
 
 	simulatorView := ui.NewSimulatorPanel()
 
-	pages := tview.NewPages().
-		AddPage("simulator", simulatorView, true, true).
-		AddPage("raw", rawView, true, true).
-		AddPage("parsed", parsedView, true, true)
+	pages := tab.NewTabPanelHozitonal(tview.NewPages())
+	pages.AddPage("simulator", simulatorView, true, true)
+	pages.AddPage("raw", rawView, true, true)
+	pages.AddPage("parsed", parsedView, true, true)
 
 	panel := &MainPanel{
-		tab.NewTabPanelHozitonal(pages),
+		pages,
 		parsedView,
 		rawView,
 	}

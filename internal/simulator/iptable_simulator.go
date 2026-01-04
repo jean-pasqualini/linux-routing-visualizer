@@ -1,95 +1,138 @@
 package simulator
 
 import (
-	"net"
-	"syscall"
-
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/routing"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
-	"github.com/vishvananda/netlink"
+	"net"
+	"slices"
+	"strings"
 )
 
-type IptableSimulator struct {
-	query  simulator.FormEvent
-	tables map[string]iptable.Table
-	result simulator.SimulatorResultEvent
+type SimulatorQuery struct {
+	Source   SimulatorQueryTarget
+	Target   SimulatorQueryTarget
+	State    string
+	Protocol string
 }
 
-func NewIptableSimulator(query simulator.FormEvent, tables map[string]iptable.Table) *IptableSimulator {
-	return &IptableSimulator{
+type SimulatorQueryTarget struct {
+	Device string
+	IP     string
+	Port   string
+}
+
+type Simulator struct {
+	query  SimulatorQuery
+	tables map[string]iptable.Table
+	result SimulatorResult
+}
+
+type SimulatorMismatch struct {
+	Reason string
+	Raw    string
+}
+
+type SimulatorResultRule struct {
+	Raw        string
+	JumpChain  *SimulatorNetfilterChain
+	Matched    bool
+	Mismatches []SimulatorMismatch
+}
+
+type SimulatorNetfilterChain struct {
+	Name     string
+	Decision string
+	Rules    []SimulatorResultRule
+}
+
+type SimulatorNetrouting struct {
+	RouteType string
+}
+
+type SimulatorIncomingInterface struct {
+	Interface string
+}
+
+type SimulatorEvent interface {
+}
+
+type SimulatorResult struct {
+	Events []SimulatorEvent
+}
+
+func NewSimulator(query SimulatorQuery, tables map[string]iptable.Table) *Simulator {
+	return &Simulator{
 		query:  query,
 		tables: tables,
-		result: simulator.SimulatorResultEvent{
-			Request: query,
-			Rules:   make([]simulator.SimulatorResultRuleEvent, 0),
-			Chains:  make([]simulator.SimulatorResultChainEvent, 0),
+		result: SimulatorResult{
+			Events: make([]SimulatorEvent, 0),
 		},
 	}
 }
 
-func (s *IptableSimulator) Match(query simulator.FormEvent, rule iptable.Rule) (bool, []string) {
-	reasons := make([]string, 0)
+func (s *Simulator) Match(query SimulatorQuery, rule iptable.Rule) (bool, []SimulatorMismatch) {
+	reasons := make([]SimulatorMismatch, 0)
+	// AddrType
+	if rule.Filter.From.AddrType == "LOCAL" && !routing.IsLocalRoute(net.ParseIP(query.Source.IP)) {
+		reasons = append(reasons, SimulatorMismatch{"source addrtype", "--src-type"})
+	}
+	if rule.Filter.To.AddrType == "LOCAL" && !routing.IsLocalRoute(net.ParseIP(query.Target.IP)) {
+		reasons = append(reasons, SimulatorMismatch{"target addrtype", "--dst-type"})
+	}
 	// Protocl
-	if rule.Filter.Protocol != "" && rule.Filter.Protocol != query.Protocol {
-		state.Dispatch("logger", "\t\t\t -> filter: protocol mismatch")
-		reasons = append(reasons, "protocol mismatch")
+	if rule.Filter.Protocol != "" && strings.ToUpper(rule.Filter.Protocol) != query.Protocol {
+		reasons = append(reasons, SimulatorMismatch{"protocol mismatch ", "-p"})
 	}
 	// Device
 	if !rule.Filter.From.Device.Match(query.Source.Device) {
-		state.Dispatch("logger", "\t\t\t -> filter: source device mismatch")
-		reasons = append(reasons, "source device mismatch")
+		reasons = append(reasons, SimulatorMismatch{"source device mismatch", "-i"})
 	}
 	if !rule.Filter.To.Device.Match(query.Target.Device) {
-		state.Dispatch("logger", "\t\t\t -> filter: target device mismatch")
-		reasons = append(reasons, "target device mismatch")
+		reasons = append(reasons, SimulatorMismatch{"target device mismatch", "-o"})
 	}
 	// Port
 	if rule.Filter.From.Port != "" && rule.Filter.From.Port != query.Source.Port {
-		state.Dispatch("logger", "\t\t\t -> filter: source port mismatch")
-		reasons = append(reasons, "source port mismatch")
+		reasons = append(reasons, SimulatorMismatch{"source port mismatch", "--sport"})
 	}
 	if rule.Filter.To.Port != "" && rule.Filter.To.Port != query.Target.Port {
-		state.Dispatch("logger", "\t\t\t -> filter: target port mismatch")
-		reasons = append(reasons, "target port mismatch")
+		reasons = append(reasons, SimulatorMismatch{"target port mismatch", "--dport"})
 	}
 	// Cidr
 	if rule.Filter.From.CIDR != nil && !rule.Filter.From.CIDR.Contains(net.ParseIP(query.Source.IP)) {
-		state.Dispatch("logger", "\t\t\t -> filter: source cidr mismatch")
-		reasons = append(reasons, "source cidr mismatch")
+		reasons = append(reasons, SimulatorMismatch{"source cidr mismatch", "-s"})
 	}
 	if rule.Filter.To.CIDR != nil && !rule.Filter.To.CIDR.Contains(net.ParseIP(query.Target.IP)) {
-		state.Dispatch("logger", "\t\t\t -> filter: target cidr mismatch")
-		reasons = append(reasons, "target cidr mismatch")
+		reasons = append(reasons, SimulatorMismatch{"target cidr mismatch", "-t"})
+	}
+	if len(rule.Filter.ConnectionState) > 0 && !slices.Contains(rule.Filter.ConnectionState, query.State) {
+		reasons = append(reasons, SimulatorMismatch{"conection state mismatch", "--cstate"})
 	}
 	return len(reasons) == 0, reasons
 }
 
-func (s *IptableSimulator) enterChain(tableName string, chainName string) {
+func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName string, chainName string) {
 	if chain, ok := s.tables[tableName].Chains[chainName]; ok {
 		state.Dispatch("logger", "\t -> enter chain "+chainName)
 		for _, rule := range chain.Rules {
 
-			matchingResult, reasons := s.Match(s.query, rule)
-			ruleMatching := simulator.SimulatorResultRuleEvent{
-				Raw:     rule.Raw,
-				Matched: matchingResult,
+			matchingResult, mismatches := s.Match(s.query, rule)
+			ruleMatching := SimulatorResultRule{
+				Raw:        rule.Raw,
+				Matched:    matchingResult,
+				Mismatches: mismatches,
 			}
 			state.Dispatch("logger", "\t\t -> should add rule "+ruleMatching.Raw)
 			if !matchingResult {
 				state.Dispatch("logger", "\t\t -> matching fail")
-				for _, reason := range reasons {
-					state.Dispatch("logger", "\t\t\t -> filter: "+reason)
+				for _, mismatch := range mismatches {
+					state.Dispatch("logger", "\t\t\t -> filter: "+mismatch.Reason)
 				}
 			}
 
-			s.result.Rules = append(s.result.Rules, ruleMatching)
+			chainEvent.Rules = append(chainEvent.Rules, ruleMatching)
 			if ruleMatching.Matched {
 				if rule.JumpTarget == "ACCEPT" || rule.JumpTarget == "DROP" || rule.JumpTarget == "REJECT" || rule.JumpTarget == "RETURN" {
-					s.result.Chains = append(s.result.Chains, simulator.SimulatorResultChainEvent{
-						Name:     chainName,
-						Decision: rule.JumpTarget,
-					})
 					state.Dispatch("logger", "\t\t\t -> final decision "+rule.JumpTarget+" for that chain ")
 					return
 				}
@@ -102,14 +145,10 @@ func (s *IptableSimulator) enterChain(tableName string, chainName string) {
 				if rule.JumpTarget == "MASQUERADE" {
 					state.Dispatch("logger", "\t\t\t -> masquerade")
 				}
-				s.enterChain(tableName, rule.JumpTarget)
+				//s.enterChain(tableName, rule.JumpTarget)
 			}
 		}
 		if chain.Policy != "-" {
-			s.result.Chains = append(s.result.Chains, simulator.SimulatorResultChainEvent{
-				Name:     chainName,
-				Decision: chain.Policy,
-			})
 			state.Dispatch("logger", "\t\t\t -> final decision "+chain.Policy+" for that chain ")
 		}
 	} else {
@@ -117,49 +156,61 @@ func (s *IptableSimulator) enterChain(tableName string, chainName string) {
 	}
 }
 
-func (s *IptableSimulator) isLocalRoute(ip net.IP) bool {
-	routes, _ := netlink.RouteGet(ip)
-	return routes[0].Type == syscall.RTN_LOCAL
-}
-
-func (s *IptableSimulator) enterTable(tableName string, chainName string) {
+func (s *Simulator) enterTable(chainEvent *SimulatorNetfilterChain, tableName string) {
 	if _, ok := s.tables[tableName]; ok {
 		state.Dispatch("logger", "-> enter table "+tableName)
-		s.enterChain(tableName, chainName)
+		s.enterChain(chainEvent, tableName, chainEvent.Name)
 	} else {
 		state.Dispatch("logger", "-> not found table "+tableName)
 	}
 }
 
-func (s *IptableSimulator) Simulate() simulator.SimulatorResultEvent {
+func (s *Simulator) walkBuiltinChain(chainEvent *SimulatorNetfilterChain) {
+	for _, tableName := range iptable.TablesList {
+		s.enterTable(chainEvent, string(tableName))
+	}
+}
+
+func (s *Simulator) Simulate() SimulatorResult {
 	sourceIP := net.ParseIP(s.query.Target.IP)
 	if sourceIP == nil {
 		state.Dispatch("logger", "invalid source ip")
-		return simulator.SimulatorResultEvent{}
+		return SimulatorResult{}
 	}
 	targetIP := net.ParseIP(s.query.Target.IP)
 	if targetIP == nil {
 		state.Dispatch("logger", "invalid target ip")
-		return simulator.SimulatorResultEvent{}
+		return SimulatorResult{}
 	}
+	s.result.Events = append(s.result.Events, SimulatorIncomingInterface{
+		Interface: s.query.Source.Device,
+	})
+
 	// We consider for now that it is an incoming packet
 	// Chain PREPROUTING
-	for _, tableName := range iptable.TablesList {
-		s.enterTable(string(tableName), "PREROUTING")
-	}
-	if s.isLocalRoute(targetIP) {
+	preroutingEvent := SimulatorNetfilterChain{Name: "PREROUTING"}
+	s.walkBuiltinChain(&preroutingEvent)
+	s.result.Events = append(s.result.Events, preroutingEvent)
+
+	if routing.IsLocalRoute(targetIP) {
+		s.result.Events = append(s.result.Events, SimulatorNetrouting{
+			RouteType: "local",
+		})
 		// Chain INPUT
-		for _, tableName := range iptable.TablesList {
-			s.enterTable(string(tableName), "INPUT")
-		}
+		inputEvent := SimulatorNetfilterChain{Name: "INPUT"}
+		s.walkBuiltinChain(&inputEvent)
+		s.result.Events = append(s.result.Events, inputEvent)
 	} else {
+		s.result.Events = append(s.result.Events, SimulatorNetrouting{
+			RouteType: "nolocal",
+		})
 		// Chain FORWARD
-		for _, tableName := range iptable.TablesList {
-			s.enterTable(string(tableName), "FORWARD")
-		}
-		for _, tableName := range iptable.TablesList {
-			s.enterTable(string(tableName), "POSTROUTING")
-		}
+		forwardEvent := SimulatorNetfilterChain{Name: "FORWARD"}
+		s.walkBuiltinChain(&forwardEvent)
+		s.result.Events = append(s.result.Events, forwardEvent)
+		postRoutingEvent := SimulatorNetfilterChain{Name: "POSTROUTING"}
+		s.walkBuiltinChain(&postRoutingEvent)
+		s.result.Events = append(s.result.Events, postRoutingEvent)
 	}
 
 	return s.result
