@@ -2,11 +2,9 @@ package simulator
 
 import (
 	"fmt"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/text"
-	"github.com/mattn/go-runewidth"
-	"io"
-	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
@@ -15,19 +13,23 @@ import (
 )
 
 func NewResultView() *ResultView {
-	textView := tview.NewTextView()
-	textView.SetBackgroundColor(tcell.ColorDarkBlue)
-	textView.SetDynamicColors(true)
-	textView.SetBorder(true)
-	textView.SetTextColor(tcell.ColorWhite)
-	textView.SetBorderPadding(0, 0, 2, 2)
+	treeView := tview.NewTreeView()
+	treeView.SetBackgroundColor(tcell.ColorDarkBlue)
+	treeView.SetBorder(true)
+	treeView.SetBorderPadding(0, 0, 2, 2)
+	treeView.SetSelectedFunc(func(node *tview.TreeNode) {
+		children := node.GetChildren()
+		if len(children) > 0 {
+			node.SetExpanded(!node.IsExpanded())
+		}
+	})
 	logView := tview.NewTextView()
 	pages := tab.NewTabPanelHozitonal(tview.NewPages())
-	pages.AddPage("Rules", textView, true, true)
+	pages.AddPage("Rules", treeView, true, true)
 	pages.AddPage("Logs", logView, true, false)
 	rView := &ResultView{
 		TabPanelHorizontal: pages,
-		textView:           textView,
+		treeView:           treeView,
 		logView:            logView,
 	}
 
@@ -39,7 +41,7 @@ func NewResultView() *ResultView {
 
 type ResultView struct {
 	*tab.TabPanelHorizontal
-	textView *tview.TextView
+	treeView *tview.TreeView
 	logView  *tview.TextView
 }
 
@@ -57,23 +59,19 @@ func (s *ResultView) addLog(name string, event any) {
 	}
 }
 
-func (v *ResultView) drawBox(w io.Writer, txt string) {
-	size := runewidth.StringWidth(text.RemoveSquareBrackets(txt))
-	fmt.Fprintf(w, "%s\n", "╭"+strings.Repeat("─", size+2)+"╮")
-	fmt.Fprintf(w, "│ %s │\n", txt)
-	fmt.Fprintf(w, "%s\n", "╰"+strings.Repeat("─", size+2)+"╯")
+func (v *ResultView) createNode(txt string) *tview.TreeNode {
+	stl := tcell.StyleDefault.Background(tcell.ColorDarkBlue).Foreground(tcell.ColorWhite)
+	return tview.NewTreeNode(txt).SetTextStyle(stl)
 }
 
 func (v *ResultView) SetResult(result simulator.SimulatorResult) {
-	w := v.textView.BatchWriter()
-	defer w.Close()
-	w.Clear()
+	rootNode := tview.NewTreeNode("result")
 	for _, event := range result.Events {
 		if incoming, ok := event.(simulator.SimulatorIncomingInterface); ok {
-			v.drawBox(w, "Incoming packet in interface "+incoming.Interface)
+			rootNode.SetText("🖥️ packet in interface " + incoming.Interface)
 		}
 		if chain, ok := event.(simulator.SimulatorNetfilterChain); ok {
-			v.drawBox(w, "Chain "+chain.Name+" "+chain.Decision)
+			chainNode := v.createNode("🔗 " + chain.Name + " " + chain.Decision)
 			for _, rule := range chain.Rules {
 				icon := "✅"
 				color := "#39FF14::b"
@@ -85,12 +83,15 @@ func (v *ResultView) SetResult(result simulator.SimulatorResult) {
 				for _, mismatch := range rule.Mismatches {
 					outText = text.TagColorRegions("#6D071A::b", color, outText, mismatch.Raw+" ")
 				}
-				v.drawBox(w, outText)
+				chainNode.AddChild(v.createNode(outText))
 			}
+			chainNode.CollapseAll()
+			rootNode.AddChild(chainNode)
 		}
 		if route, ok := event.(simulator.SimulatorNetrouting); ok {
-			v.drawBox(w, "Routing "+route.RouteType)
+			rootNode.AddChild(v.createNode("🗺️ " + route.RouteType))
 		}
 	}
 
+	v.treeView.SetRoot(rootNode)
 }

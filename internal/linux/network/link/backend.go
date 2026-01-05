@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/k0kubun/pp"
 	anetlink "github.com/mdlayher/netlink"
 	"github.com/prometheus/procfs"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
+
 	"syscall"
 )
 
@@ -43,7 +46,7 @@ func Fetch() {
 
 // LIke ss -lptn
 func ListListeners() {
-	c, err := anetlink.Dial(syscall.NETLINK_SOCK_DIAG, nil)
+	c, err := anetlink.Dial(unix.NETLINK_SOCK_DIAG, nil)
 	if err != nil {
 		panic(err)
 	}

@@ -1,3 +1,5 @@
+LEVEL = medium
+
 DOCKER_RUN = docker run -e TERM=xterm-256color --net=host --pid=host --privileged \
 	-w /app \
 	-v go-build-cache:/root/.cache/go-build \
@@ -24,27 +26,27 @@ setcap:
 build-docker:
 	docker build -t linux-routing:latest .
 run-docker-list:
-	$(DOCKER_RUN) go run main.go
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go
 run-docker-sniff:
-	$(DOCKER_RUN) go run -tags medium main.go libpcap-dev -i eth0
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go libpcap-dev -i eth0
 run-docker-socket:
-	$(DOCKER_RUN_NO_CGO) go run -tags medium main.go socket
+	$(DOCKER_RUN_NO_CGO) go run -tags $(LEVEL) main.go socket
 run-docker-iptable:
-	$(DOCKER_RUN) go run main.go iptable
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go iptable
 run-docker-link:
-	$(DOCKER_RUN) go run main.go link
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go link
 run-docker-ipvs:
-	$(DOCKER_RUN) go run main.go ipvs
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go ipvs
 run-docker-sysctl:
-	$(DOCKER_RUN) go run main.go sysctl
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go sysctl
 run-docker-routing:
-	$(DOCKER_RUN) go run main.go routing
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go routing
 run-docker-bubble:
-	$(DOCKER_RUN) go run main.go bubble
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go bubble
 run-docker-simulate:
-	$(DOCKER_RUN) go run main.go simulate
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go simulate
 run-docker-tui:
-	$(DOCKER_RUN) go run main.go tui
+	$(DOCKER_RUN) go run -tags $(LEVEL) main.go tui
 dev-docker-tui:
 	$(DOCKER_RUN_DETACHED) /app/kill.sh
 	$(DOCKER_RUN) /app/dev.sh

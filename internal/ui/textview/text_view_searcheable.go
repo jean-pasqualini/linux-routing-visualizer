@@ -1,9 +1,11 @@
 package textview
 
 import (
+	"fmt"
+	"regexp"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"regexp"
 )
 
 type TextViewSearchable struct {
@@ -94,5 +96,7 @@ func (t *TextViewSearchable) InputHandler() func(event *tcell.EventKey, setFocus
 }
 
 func (t *TextViewSearchable) SetText(text string) {
-	t.textView.SetText(text)
+	w := tview.ANSIWriter(t.textView)
+	fmt.Fprintln(w, text)
+	//t.textView.SetText(text)
 }

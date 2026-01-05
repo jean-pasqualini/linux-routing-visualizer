@@ -9,9 +9,9 @@ import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 	simulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui"
+	uiiptable "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/iptable"
 	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
-	"github.com/k0kubun/pp"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
@@ -24,20 +24,6 @@ var tuiCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//tview.Borders.Horizontal = '⎺'
 		//tview.Borders.Vertical = '▌'
-		pp.SetColorScheme(pp.ColorScheme{
-			Bool:            pp.NoColor,
-			Integer:         pp.NoColor,
-			Float:           pp.NoColor,
-			String:          pp.NoColor,
-			StringQuotation: pp.NoColor,
-			EscapedChar:     pp.NoColor,
-			FieldName:       pp.NoColor,
-			PointerAdress:   pp.NoColor,
-			Nil:             pp.NoColor,
-			Time:            pp.NoColor,
-			StructName:      pp.NoColor,
-			ObjectLength:    pp.NoColor,
-		})
 
 		app := tview.NewApplication()
 
@@ -53,7 +39,7 @@ var tuiCmd = &cobra.Command{
 			ipt := iptable.NewBackend()
 			tables, _ := ipt.ListChains("aeaze")
 			raw := ipt.GetStdout()
-			state.Dispatch("iptables:response", ui.IpTableResponse{
+			state.Dispatch("iptables:response", uiiptable.IpTableResponse{
 				Parsed: tables,
 				Raw:    raw,
 			})
