@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sniffing"
+	"sync"
 	"time"
 )
 
@@ -30,8 +31,14 @@ func (h *libpcapHandler) Handle(ctx context.Context) {
 	timeout := h.opts.Timeout
 
 	s := sniffing.NewSniffing()
-	err := s.Sniff(ctx, iface, filter, snaplen, promisc, timeout)
-	if err != nil {
-		fmt.Println(err)
-	}
+	ch, _ := s.Sniff(ctx, iface, filter, snaplen, promisc, timeout)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for pkt := range ch {
+			fmt.Printf("IPV4 %s -> %s \n", pkt.Source, pkt.Target)
+		}
+	}()
+	wg.Wait()
 }

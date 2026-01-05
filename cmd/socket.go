@@ -7,7 +7,6 @@ import (
 	"context"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/handlers"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
-
 	"github.com/spf13/cobra"
 )
 

@@ -70,162 +70,181 @@ type Tpacket3Hdr struct {
 	Pad        uint16
 }
 
-// Sniff prints Ethernet frames as they arrive.
-func (s *Sniffing) Sniff(ctx context.Context, iface string, filter string, snaplen int32, promisc bool, timeout time.Duration) error {
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(syscall.ETH_P_ALL)))
-	if err != nil {
-		return err
-	}
-	defer syscall.Close(fd)
-
-	// Bind to interface
-	ifi, err := net.InterfaceByName(iface)
-	if err != nil {
-		return err
-	}
-	if err := syscall.Bind(fd, &syscall.SockaddrLinklayer{
-		Protocol: htons(syscall.ETH_P_ALL),
-		Ifindex:  ifi.Index,
-	}); err != nil {
-		return err
-	}
-
-	// Optional promiscuous mode
-	if promisc {
-	}
-
-	/**
-
-	FrameSize: 0, // obligatoire
-	FrameNr:   0, // obligatoire
-
-	const TP_FT_REQ_FILL_RXHASH = 1 << 0
-
-	req.FeatureReqWord = TP_FT_REQ_FILL_RXHASH
-	FeatureReqWord: 0, // <-- OBLIGATOIRE avec filtre
-	*/
-	//// Filter
-	prog := unix.SockFprog{
-		Len:    uint16(len(filters)),
-		Filter: &filters[0],
-	}
-
-	if err := unix.SetsockoptSockFprog(fd, unix.SOL_SOCKET, unix.SO_ATTACH_FILTER, &prog); err != nil {
-		fmt.Println("noooo")
-		return err
-	}
-
-	////
-
-	// Configure TPACKET_V3 ring
-	req := TpacketReq3{
-		BlockSize:    1 << 20, // 1MB
-		BlockNr:      64,
-		FrameSize:    2048,                  // not used by V3 in the same way, but must be non-zero
-		FrameNr:      (1 << 20) * 64 / 2048, // ✅ parentheses fixed
-		RetireBlkTov: 60,                    // ms
-	}
-
-	if err := syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PACKET_VERSION, TPACKET_V3); err != nil {
-		return err
-	}
-
-	_, _, errno := syscall.Syscall6(
-		syscall.SYS_SETSOCKOPT,
-		uintptr(fd),
-		uintptr(syscall.SOL_PACKET),
-		uintptr(PACKET_RX_RING),
-		uintptr(unsafe.Pointer(&req)),
-		unsafe.Sizeof(req),
-		0,
-	)
-	if errno != 0 {
-		return errno
-	}
-
-	mmapSize := int(req.BlockSize * req.BlockNr)
-	data, err := syscall.Mmap(fd, 0, mmapSize, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
-	if err != nil {
-		return err
-	}
-	defer syscall.Munmap(data)
-
-	// poll(2) via x/sys/unix
-	pfds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}
-	pollTimeoutMs := int(timeout.Milliseconds())
-	if pollTimeoutMs <= 0 {
-		pollTimeoutMs = 1000
-	}
-
-	for i := 0; ; i = (i + 1) % int(req.BlockNr) {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		block := data[i*int(req.BlockSize):]
-		//desc := (*TpacketBlockDesc)(unsafe.Pointer(&block[0]))
-		//hdr := (*TpacketHdrV1)(unsafe.Pointer(&block[8]))
-		desc := (*TpacketBlockDesc)(unsafe.Pointer(&block[0]))
-		// tpacket_hdr_v1 est juste après TpacketBlockDesc (8 bytes)
-		hdr := (*TpacketHdrV1)(unsafe.Pointer(&block[unsafe.Sizeof(*desc)]))
-
-		if hdr.BlockStatus&TP_STATUS_USER == 0 {
-			_, err = unix.Poll(pfds, pollTimeoutMs)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-			continue
-		}
-
-		offset := int(hdr.OffsetToFirstPkt)
-		for p := 0; p < int(hdr.NumPkts); p++ {
-			pktHdr := (*Tpacket3Hdr)(unsafe.Pointer(&block[offset]))
-
-			start := offset + int(pktHdr.Mac)
-			end := start + int(pktHdr.SnapLen)
-
-			if start < 0 || end > len(block) || end < start {
-				break
-			}
-
-			frame := block[start:end]
-			printEthernet(frame)
-			decodeIPv4(frame)
-
-			if pktHdr.NextOffset == 0 {
-				break
-			}
-			offset += int(pktHdr.NextOffset)
-		}
-
-		// Release block back to kernel
-		hdr.BlockStatus = TP_STATUS_KERNEL
-	}
+type Packet struct {
+	Source string
+	Target string
 }
 
-func decodeIPv4(frame []byte) {
+// Sniff prints Ethernet frames as they arrive.
+func (s *Sniffing) Sniff(ctx context.Context, iface string, filter string, snaplen int32, promisc bool, timeout time.Duration) (chan Packet, error) {
+	out := make(chan Packet, 4096)
+
+	go func() {
+		fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(syscall.ETH_P_ALL)))
+		if err != nil {
+			return
+		}
+		defer syscall.Close(fd)
+
+		// Bind to interface
+		ifi, err := net.InterfaceByName(iface)
+		if err != nil {
+			return
+		}
+		if err := syscall.Bind(fd, &syscall.SockaddrLinklayer{
+			Protocol: htons(syscall.ETH_P_ALL),
+			Ifindex:  ifi.Index,
+		}); err != nil {
+			return
+		}
+
+		// Optional promiscuous mode
+		if promisc {
+		}
+
+		/**
+
+		FrameSize: 0, // obligatoire
+		FrameNr:   0, // obligatoire
+
+		const TP_FT_REQ_FILL_RXHASH = 1 << 0
+
+		req.FeatureReqWord = TP_FT_REQ_FILL_RXHASH
+		FeatureReqWord: 0, // <-- OBLIGATOIRE avec filtre
+		*/
+		//// Filter
+		/**
+		prog := unix.SockFprog{
+			Len:    uint16(len(filters)),
+			Filter: &filters[0],
+		}
+
+		if err := unix.SetsockoptSockFprog(fd, unix.SOL_SOCKET, unix.SO_ATTACH_FILTER, &prog); err != nil {
+			fmt.Println("noooo")
+			return err
+		}
+		*/
+		////
+
+		// Configure TPACKET_V3 ring
+		req := TpacketReq3{
+			BlockSize:    1 << 20, // 1MB
+			BlockNr:      64,
+			FrameSize:    2048,                  // not used by V3 in the same way, but must be non-zero
+			FrameNr:      (1 << 20) * 64 / 2048, // ✅ parentheses fixed
+			RetireBlkTov: 60,                    // ms
+		}
+
+		if err := syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PACKET_VERSION, TPACKET_V3); err != nil {
+			return
+		}
+
+		_, _, errno := syscall.Syscall6(
+			syscall.SYS_SETSOCKOPT,
+			uintptr(fd),
+			uintptr(syscall.SOL_PACKET),
+			uintptr(PACKET_RX_RING),
+			uintptr(unsafe.Pointer(&req)),
+			unsafe.Sizeof(req),
+			0,
+		)
+		if errno != 0 {
+			return
+		}
+
+		mmapSize := int(req.BlockSize * req.BlockNr)
+		data, err := syscall.Mmap(fd, 0, mmapSize, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+		if err != nil {
+			return
+		}
+		defer syscall.Munmap(data)
+
+		// poll(2) via x/sys/unix
+		pfds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}
+		pollTimeoutMs := int(timeout.Milliseconds())
+		if pollTimeoutMs <= 0 {
+			pollTimeoutMs = 1000
+		}
+
+		for i := 0; ; i = (i + 1) % int(req.BlockNr) {
+			select {
+			case <-ctx.Done():
+				fmt.Println("you requested to stop")
+				close(out)
+				return
+			default:
+			}
+
+			block := data[i*int(req.BlockSize):]
+			//desc := (*TpacketBlockDesc)(unsafe.Pointer(&block[0]))
+			//hdr := (*TpacketHdrV1)(unsafe.Pointer(&block[8]))
+			desc := (*TpacketBlockDesc)(unsafe.Pointer(&block[0]))
+			// tpacket_hdr_v1 est juste après TpacketBlockDesc (8 bytes)
+			hdr := (*TpacketHdrV1)(unsafe.Pointer(&block[unsafe.Sizeof(*desc)]))
+
+			if hdr.BlockStatus&TP_STATUS_USER == 0 {
+				_, err = unix.Poll(pfds, pollTimeoutMs)
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+				continue
+			}
+
+			offset := int(hdr.OffsetToFirstPkt)
+			for p := 0; p < int(hdr.NumPkts); p++ {
+				pktHdr := (*Tpacket3Hdr)(unsafe.Pointer(&block[offset]))
+
+				start := offset + int(pktHdr.Mac)
+				end := start + int(pktHdr.SnapLen)
+
+				if start < 0 || end > len(block) || end < start {
+					break
+				}
+
+				frame := block[start:end]
+				//printEthernet(frame)
+				if pack := decodeIPv4(frame); pack != nil {
+					out <- *pack
+				}
+
+				if pktHdr.NextOffset == 0 {
+					break
+				}
+				offset += int(pktHdr.NextOffset)
+			}
+
+			// Release block back to kernel
+			hdr.BlockStatus = TP_STATUS_KERNEL
+		}
+	}()
+
+	return out, nil
+}
+
+func decodeIPv4(frame []byte) *Packet {
 	if len(frame) < 34 {
-		return
+		return nil
 	}
 
 	ethType := binary.BigEndian.Uint16(frame[12:14])
 	if ethType != 0x0800 {
-		return // pas IPv4
+		return nil // pas IPv4
 	}
 
 	ip := frame[14:]
 	ihl := int(ip[0]&0x0F) * 4
 	if len(ip) < ihl {
-		return
+		return nil
 	}
 
 	src := net.IP(ip[12:16])
 	dst := net.IP(ip[16:20])
-	proto := ip[9]
+	//proto := ip[9]
 
-	fmt.Printf("IPv4 %s → %s proto=%d\n", src, dst, proto)
+	return &Packet{
+		Source: src.String(),
+		Target: dst.String(),
+	}
 }
 
 func printEthernet(b []byte) {

@@ -60,6 +60,8 @@ func BuildForm() *tview.Flex {
 		}).
 		AddDropDown("State", []string{"NONE", "RELATED", "ESTABLISHED"}, 0, func(option string, _ int) {
 			formEvent.State = option
+		}).
+		AddDropDown("Direction", []string{"RECEIVING", "SENDING", "FORWARDING"}, 0, func(_ string, _ int) {
 		})
 	formGeneral.SetFieldBackgroundColor(tcell.ColorWhite)
 	formGeneral.SetFieldTextColor(tcell.ColorBlack)
