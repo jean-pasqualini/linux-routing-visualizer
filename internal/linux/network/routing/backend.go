@@ -1,49 +1,44 @@
 package routing
 
-import (
-	"github.com/vishvananda/netlink"
-	"net"
-	"syscall"
-)
+import "github.com/vishvananda/netlink"
 
-func IsLocalRoute(ip net.IP) bool {
-	routes, _ := netlink.RouteGet(ip)
-	return routes[0].Type == syscall.RTN_LOCAL
+type RoutingBackend struct {
 }
 
-func RervesePathCheck(srcIP net.IP, inIfName string, mode int) bool {
-	if mode == 0 {
-		return true
-	}
+func NewRoutingBackend() *RoutingBackend {
+	return &RoutingBackend{}
+}
 
-	inLink, err := netlink.LinkByName(inIfName)
+func (r *RoutingBackend) Fetch() (RoutingConfig, error) {
+	config := RoutingConfig{}
+	rules, err := netlink.RuleList(netlink.FAMILY_V4)
 	if err != nil {
-		return false
+		return config, err
 	}
-
-	opts := &netlink.RouteGetOptions{
-		SrcAddr:  srcIP,
-		IifIndex: inLink.Attrs().Index,
-		FIBMatch: true,
+	for _, rule := range rules {
+		table := RoutingTable{
+			ID: rule.Table,
+		}
+		wrt := WhatRouteTable{
+			Priority: rule.Priority,
+			Src:      rule.Src,
+			FwMark:   rule.Mark,
+			Table:    table,
+		}
+		routeList := []RouteDesc{}
+		routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, &netlink.Route{Table: rule.Table}, netlink.RT_FILTER_TABLE)
+		if err == nil {
+			for _, route := range routes {
+				routeList = append(routeList, RouteDesc{
+					Scope:      int(route.Scope),
+					Device:     route.LinkIndex,
+					TargetCIDR: route.Dst,
+				})
+			}
+		}
+		wrt.Table.Routes = routeList
+		config.Rules = append(config.Rules, wrt)
+		//config.Tables = append(config.Tables, table)
 	}
-
-	routes, err := netlink.RouteGetWithOptions(srcIP, opts)
-	if err != nil {
-		return false
-	}
-	if len(routes) < 1 {
-		return false
-	}
-	rev := routes[0]
-
-	// // loose: only require route existence
-	if mode == 2 {
-		return true
-	}
-
-	// mode == 1 strict: require oif == iif
-	if rev.LinkIndex == inLink.Attrs().Index {
-		return true
-	}
-	return false
+	return config, nil
 }

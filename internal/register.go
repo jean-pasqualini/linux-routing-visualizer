@@ -2,10 +2,13 @@ package internal
 
 import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ipvs"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/routing"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/socket"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
 	uiiptable "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/iptable"
+	uiipvs "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/ipvs"
 	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 )
@@ -53,5 +56,21 @@ func Register() {
 	state.Subscribe("socket:request", func(name string, event any) {
 		sBackend := socket.NewSocketBackend()
 		state.Dispatch("socket:response", sBackend.ListListeners())
+	})
+
+	state.Subscribe("ipvs:request", func(name string, event any) {
+		sBackend := ipvs.NewIPVSBackend()
+		raw, services, err := sBackend.Fetch()
+		if err == nil {
+			state.Dispatch("ipvs:response", uiipvs.IPVSEvent{raw, services})
+		}
+	})
+
+	state.Subscribe("routing:request", func(name string, event any) {
+		backend := routing.NewRoutingBackend()
+		config, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("routing:response", config)
+		}
 	})
 }

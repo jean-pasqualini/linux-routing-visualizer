@@ -1,44 +1,51 @@
-package socket
+package ipvs
 
 import (
 	"fmt"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/socket"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ipvs"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/k0kubun/pp"
 	"github.com/rivo/tview"
 )
 
-type SocketView struct {
+type IPVSView struct {
 	*tview.Flex
-	humanText *tview.TextView
-	goText    *tview.TextView
+	rawText *tview.TextView
+	goText  *tview.TextView
 }
 
-func NewSocketView() *SocketView {
-	humanText := tview.NewTextView()
-	humanText.SetBorder(true).SetTitle("Human version")
+type IPVSEvent struct {
+	Raw string
+	Go  []ipvs.IPVSService
+}
+
+func NewIPVSView() *IPVSView {
+	rawText := tview.NewTextView()
+	rawText.SetDynamicColors(true).SetBorder(true).SetTitle("Raw version")
 	goText := tview.NewTextView()
 	goText.SetDynamicColors(true).SetBorder(true).SetTitle("Go version")
-	view := &SocketView{
-		Flex:      tview.NewFlex(),
-		humanText: humanText,
-		goText:    goText,
+	view := &IPVSView{
+		Flex:    tview.NewFlex(),
+		rawText: rawText,
+		goText:  goText,
 	}
+	view.AddItem(rawText, 0, 1, false)
 	view.AddItem(goText, 0, 1, false)
-	view.AddItem(humanText, 0, 1, false)
 
-	state.Subscribe("socket:response", view.onDisplay)
-	state.Dispatch("socket:request", nil)
+	state.Subscribe("ipvs:response", view.onDisplay)
 
 	return view
 }
 
-func (v *SocketView) onDisplay(name string, event any) {
-	w := tview.ANSIWriter(v.goText)
-	fmt.Fprintln(w, pp.Sprint(event))
-	if sDescList, ok := event.([]socket.SocketDesc); ok {
-		for _, sDesc := range sDescList {
-			fmt.Fprintf(v.humanText, "%s(%d) is listening on port %d\n", sDesc.Comm, sDesc.Port, sDesc.PID)
-		}
+func (v *IPVSView) OnTabShow() {
+	state.Dispatch("ipvs:request", nil)
+}
+
+func (v *IPVSView) onDisplay(name string, event any) {
+	v.rawText.Clear()
+	v.goText.Clear()
+	if event, ok := event.(IPVSEvent); ok {
+		fmt.Fprintln(v.rawText, event.Raw)
+		fmt.Fprintln(tview.ANSIWriter(v.goText), pp.Sprint(event.Go))
 	}
 }

@@ -1,4 +1,4 @@
-package ui
+package event
 
 type TabEventSubscribe interface {
 	OnTabShow()

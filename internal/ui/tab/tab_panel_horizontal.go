@@ -2,6 +2,7 @@ package tab
 
 import (
 	"github.com/gdamore/tcell/v2"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/event"
 	"github.com/mattn/go-runewidth"
 	"github.com/rivo/tview"
 )
@@ -142,7 +143,7 @@ func (v *TabPanelHorizontal) MouseHandler() func(action tview.MouseAction, event
 				if relativeToInner >= zone[0] && relativeToInner <= zone[1] {
 					pagesNames := v.pages.GetPageNames(false)
 					v.indexTab = uint8(index)
-					v.pages.SwitchToPage(pagesNames[index])
+					v.SwitchToPage(pagesNames[index])
 				}
 			}
 		}
@@ -151,12 +152,20 @@ func (v *TabPanelHorizontal) MouseHandler() func(action tview.MouseAction, event
 	}
 }
 
+func (v *TabPanelHorizontal) SwitchToPage(name string) {
+	v.pages.SwitchToPage(name)
+	primitive := v.pages.GetPage(name)
+	if s, ok := primitive.(event.TabEventSubscribe); ok {
+		s.OnTabShow()
+	}
+}
+
 func (v *TabPanelHorizontal) nextTab() {
 	v.indexTab++
 	if uint8(len(v.tabNames)) < v.indexTab+1 {
 		v.indexTab = 0
 	}
-	v.pages.SwitchToPage(v.getActiveName())
+	v.SwitchToPage(v.getActiveName())
 }
 
 // InputHandler returns the handler for this primitive.

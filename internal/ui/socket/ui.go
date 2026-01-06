@@ -28,12 +28,17 @@ func NewSocketView() *SocketView {
 	view.AddItem(humanText, 0, 1, false)
 
 	state.Subscribe("socket:response", view.onDisplay)
-	state.Dispatch("socket:request", nil)
 
 	return view
 }
 
+func (p *SocketView) OnTabShow() {
+	state.Dispatch("socket:request", nil)
+}
+
 func (v *SocketView) onDisplay(name string, event any) {
+	v.humanText.Clear()
+	v.goText.Clear()
 	w := tview.ANSIWriter(v.goText)
 	fmt.Fprintln(w, pp.Sprint(event))
 	if sDescList, ok := event.([]socket.SocketDesc); ok {

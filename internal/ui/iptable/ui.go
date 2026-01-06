@@ -40,9 +40,12 @@ func NewIpTableView() *IpTableView {
 	}
 
 	state.Subscribe("iptables:response", v.render)
-	state.Dispatch("iptables:request", nil)
 
 	return v
+}
+
+func (p *IpTableView) OnTabShow() {
+	state.Dispatch("iptables:request", nil)
 }
 
 func (p *IpTableView) render(name string, event any) {

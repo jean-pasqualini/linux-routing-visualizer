@@ -90,4 +90,4 @@ man:
 	docker build -t linux-man -f Dockerfile.man .
 	docker run --rm -it linux-man man iptables
 ipvs-create:
-	sudo ipvsadm -A -t 1.1.1.1:8080 -s rr
+	$(DOCKER_RUN) bash -c "(ipvsadm -A -t 1.1.1.1:8080 -s rr && ipvsadm -a -t 1.1.1.1:8080 -r 10.0.0.11:8080 -m && ipvsadm -a -t 1.1.1.1:8080 -r 10.0.0.12:8080 -m) || ipvsadm -D -t 1.1.1.1:8080"

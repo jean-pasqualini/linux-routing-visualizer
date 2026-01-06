@@ -17,7 +17,11 @@ func NewIPVSHandler() *IPVSHandler {
 
 func (h *IPVSHandler) Handle(ctx context.Context) {
 	ipvsBackend := ipvs.NewIPVSBackend()
-	raw, services := ipvsBackend.Fetch()
+	raw, services, err := ipvsBackend.Fetch()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	fmt.Println(raw)
 	pp.Print(services)
 }
