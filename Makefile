@@ -89,3 +89,5 @@ list-tables:
 man:
 	docker build -t linux-man -f Dockerfile.man .
 	docker run --rm -it linux-man man iptables
+ipvs-create:
+	sudo ipvsadm -A -t 1.1.1.1:8080 -s rr
