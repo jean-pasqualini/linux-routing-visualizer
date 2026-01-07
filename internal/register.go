@@ -43,8 +43,9 @@ func Register(app *tview.Application) {
 			ipt := iptable.NewBackend()
 			tables, _ := ipt.ListChains("aeaze")
 			sim := simulator.NewSimulator(simulator.SimulatorQuery{
-				State:    event.State,
-				Protocol: event.Protocol,
+				State:            event.State,
+				Protocol:         event.Protocol,
+				IncludeUnmatched: event.ShowUnmatched,
 				Source: simulator.SimulatorQueryTarget{
 					Device: event.Source.Device,
 					IP:     event.Source.IP,

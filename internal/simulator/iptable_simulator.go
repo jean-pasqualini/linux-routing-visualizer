@@ -11,10 +11,11 @@ import (
 )
 
 type SimulatorQuery struct {
-	Source   SimulatorQueryTarget
-	Target   SimulatorQueryTarget
-	State    string
-	Protocol string
+	Source           SimulatorQueryTarget
+	Target           SimulatorQueryTarget
+	IncludeUnmatched bool
+	State            string
+	Protocol         string
 }
 
 type SimulatorQueryTarget struct {
@@ -37,6 +38,7 @@ type SimulatorMismatch struct {
 type SimulatorResultRule struct {
 	Raw        string
 	JumpChain  *SimulatorNetfilterChain
+	Action     string
 	Matched    bool
 	Mismatches []SimulatorMismatch
 }
@@ -131,26 +133,41 @@ func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName st
 				}
 			}
 
-			chainEvent.Rules = append(chainEvent.Rules, ruleMatching)
 			if ruleMatching.Matched {
 				if rule.JumpTarget == "ACCEPT" || rule.JumpTarget == "DROP" || rule.JumpTarget == "REJECT" || rule.JumpTarget == "RETURN" {
 					state.Dispatch("simulator:log", "\t\t\t -> final decision "+rule.JumpTarget+" for that chain ")
+					chainEvent.Decision = rule.JumpTarget
 					return
 				}
 				if rule.JumpTarget == "TRACE" {
+					ruleMatching.Action = "TRACE"
 					state.Dispatch("simulator:log", "\t\t\t -> tracing enable")
-				}
-				if rule.JumpTarget == "DNAT" {
+				} else if rule.JumpTarget == "DNAT" {
+					ruleMatching.Action = "DNAT"
 					state.Dispatch("simulator:log", "\t\t\t -> dnat")
-				}
-				if rule.JumpTarget == "MASQUERADE" {
+				} else if rule.JumpTarget == "MASQUERADE" {
+					ruleMatching.Action = "MASQUERADE"
 					state.Dispatch("simulator:log", "\t\t\t -> masquerade")
+				} else {
+					ruleMatching.Action = "JUMP"
+					jumpChain := &SimulatorNetfilterChain{Name: rule.JumpTarget, Decision: "NONE"}
+					s.enterChain(jumpChain, tableName, rule.JumpTarget)
+					ruleMatching.JumpChain = jumpChain
 				}
-				//s.enterChain(tableName, rule.JumpTarget)
 			}
+
+			// Include it after not as a child
+
+			if ruleMatching.Matched || s.query.IncludeUnmatched {
+				chainEvent.Rules = append(chainEvent.Rules, ruleMatching)
+			}
+
 		}
 		if chain.Policy != "-" {
+			chainEvent.Decision = chain.Policy
 			state.Dispatch("simulator:log", "\t\t\t -> final decision "+chain.Policy+" for that chain ")
+		} else {
+			chainEvent.Decision = "NONE"
 		}
 	} else {
 		state.Dispatch("simulator:log", "\t -> not found chain "+chainName)

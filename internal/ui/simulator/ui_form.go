@@ -20,6 +20,7 @@ func NewForm() *Form {
 
 func BuildForm() *tview.Flex {
 	var formEvent FormEvent
+	formEvent.ShowUnmatched = true
 	linkBackend := link.NewLinkBackend()
 
 	formSource := tview.NewForm().
@@ -62,6 +63,9 @@ func BuildForm() *tview.Flex {
 			formEvent.State = option
 		}).
 		AddDropDown("Direction", []string{"RECEIVING", "SENDING", "FORWARDING"}, 0, func(_ string, _ int) {
+		}).
+		AddCheckbox("Show unmatched", true, func(checked bool) {
+			formEvent.ShowUnmatched = checked
 		})
 	formGeneral.SetFieldBackgroundColor(tcell.ColorWhite)
 	formGeneral.SetFieldTextColor(tcell.ColorBlack)

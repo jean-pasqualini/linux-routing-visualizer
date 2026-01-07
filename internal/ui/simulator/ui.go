@@ -11,10 +11,11 @@ type FormEventTarget struct {
 }
 
 type FormEvent struct {
-	Source   FormEventTarget
-	Target   FormEventTarget
-	State    string
-	Protocol string
+	Source        FormEventTarget
+	Target        FormEventTarget
+	ShowUnmatched bool
+	State         string
+	Protocol      string
 }
 
 func NewSimulatorPanel() tview.Primitive {
