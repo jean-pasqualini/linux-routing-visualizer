@@ -3,8 +3,14 @@ BACKEND_SOCKET = SOCKET_DIAG
 BACKEND_IPVS = IPVS_BINARY
 BACKEND_IPTABLE = IPTABLE_BINARY
 TAGS = $(BACKEND_SNIFF) $(BACKEND_SOCKET) $(BACKEND_IPVS) $(BACKEND_IPTABLE)
+NETDEVICE = eth0
+DEBUG ?= 0
 
-NETDEVICE = wlp0s20f3
+ifeq ($(DEBUG),1)
+	DEBUG_FLAG = --debug
+else
+	DEBUG_FLAG =
+endif
 
 DOCKER_RUN = docker run -e TERM=xterm-256color -e NETDEVICE=$(NETDEVICE) --net=host --pid=host --privileged \
 	-w /app \
@@ -52,7 +58,7 @@ run-docker-bubble:
 run-docker-simulate:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go simulate
 run-docker-tui:
-	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go tui
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go tui $(DEBUG_FLAG)
 dev-docker-tui:
 	$(DOCKER_RUN_DETACHED) /app/kill.sh
 	$(DOCKER_RUN) /app/dev.sh
@@ -97,3 +103,5 @@ man:
 	docker run --rm -it linux-man man iptables
 ipvs-create:
 	$(DOCKER_RUN) bash -c "(ipvsadm -A -t 1.1.1.1:8080 -s rr && ipvsadm -a -t 1.1.1.1:8080 -r 10.0.0.11:8080 -m && ipvsadm -a -t 1.1.1.1:8080 -r 10.0.0.12:8080 -m) || ipvsadm -D -t 1.1.1.1:8080"
+sysctl-list:
+	$(DOCKER_RUN) ./net-sysctl-map.sh

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sysctl"
 	"os"
 	"time"
 
@@ -71,6 +72,14 @@ func Register(app *tview.Application) {
 		raw, services, err := sBackend.Fetch()
 		if err == nil {
 			state.Dispatch("ipvs:response", uiipvs.IPVSEvent{raw, services})
+		}
+	})
+
+	state.Subscribe("sysctl:request", func(name string, event any) {
+		sBackend := sysctl.NewSysctlBackend()
+		config, err := sBackend.Fetch()
+		if err == nil {
+			state.Dispatch("sysctl:response", config)
 		}
 	})
 

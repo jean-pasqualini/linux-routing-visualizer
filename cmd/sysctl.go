@@ -1,11 +1,12 @@
 /*
 Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
-	"fmt"
+	"context"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/handlers"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 
 	"github.com/spf13/cobra"
 )
@@ -21,7 +22,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("sysctl called")
+		l := logging.New("linux-routing-visualizer")
+		c := logging.WithLogger(context.Background(), l)
+		h := handlers.NewSysctlHandler()
+		h.Handle(c)
 	},
 }
 

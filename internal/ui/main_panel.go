@@ -7,6 +7,7 @@ import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/routing"
 	ui "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/socket"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/sysctl"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/tab"
 	"github.com/rivo/tview"
 )
@@ -23,6 +24,7 @@ func NewMainPanel() *MainPanel {
 	IPVSView := ipvs.NewIPVSView()
 	socketView := socket.NewSocketView()
 	monitorView := monitor.NewMonitorView()
+	sysctlView := sysctl.NewSysctlView()
 
 	pages := tab.NewTabPanelHozitonal(tview.NewPages())
 	pages.AddPage("simulator", simulatorView, true, true)
@@ -31,7 +33,7 @@ func NewMainPanel() *MainPanel {
 	pages.AddPage("routing", routingView, true, false)
 	pages.AddPage("sockets", socketView, true, false)
 	pages.AddPage("interfaces", tview.NewBox(), true, false)
-	pages.AddPage("sysctl", tview.NewBox(), true, false)
+	pages.AddPage("sysctl", sysctlView, true, false)
 	pages.AddPage("ipvs", IPVSView, true, false)
 
 	panel := &MainPanel{

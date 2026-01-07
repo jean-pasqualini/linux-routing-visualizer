@@ -7,9 +7,12 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/log"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
+
+var debugMode bool
 
 // tuiCmd represents the tui command
 var tuiCmd = &cobra.Command{
@@ -27,9 +30,14 @@ var tuiCmd = &cobra.Command{
 		tabPanel := ui.NewSidePanel()
 		mainPanel := ui.NewMainPanel()
 
-		layout := tview.NewFlex().
-			AddItem(tabPanel, 50, 0, true).
-			AddItem(mainPanel, 0, 1, false)
+		layout := tview.NewFlex()
+		if debugMode {
+			logPanel := log.NewLogPanel()
+			layout.AddItem(logPanel, 20, 0, false)
+		}
+
+		layout.AddItem(tabPanel, 50, 0, true)
+		layout.AddItem(mainPanel, 0, 1, false)
 
 		frame := tview.NewFrame(layout).
 			SetBorders(0, 0, 0, 0, 0, 0).
@@ -42,6 +50,8 @@ var tuiCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(tuiCmd)
+
+	tuiCmd.Flags().BoolVar(&debugMode, "debug", false, "show the log pane")
 
 	// Here you will define your flags and configuration settings.
 
