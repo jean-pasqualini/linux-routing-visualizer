@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"syscall"
 
@@ -56,14 +57,19 @@ type SocketBackend struct {
 }
 
 type SocketDesc struct {
-	Port    int
-	PID     int
-	Comm    string
-	CmdLine string
+	Port        int
+	PID         int
+	ListeningIP string
+	Comm        string
+	CmdLine     string
 }
 
 func NewSocketBackend() *SocketBackend {
 	return &SocketBackend{}
+}
+
+func ipFromBinaryInet(_ [4]uint32) net.IP {
+	return net.ParseIP("1.1.1.1")
 }
 
 // LIke ss -lptn
@@ -105,10 +111,11 @@ func (s *SocketBackend) ListListeners() []SocketDesc {
 			comm, _ := proc.Comm()
 			cmdLine, _ := proc.CmdLine()
 			listSockets = append(listSockets, SocketDesc{
-				Port:    int(port),
-				PID:     proc.PID,
-				CmdLine: strings.Join(cmdLine, " "),
-				Comm:    comm,
+				Port:        int(port),
+				PID:         proc.PID,
+				ListeningIP: ipFromBinaryInet(diag.ID.Src).String(),
+				CmdLine:     strings.Join(cmdLine, " "),
+				Comm:        comm,
 			})
 		}
 	}

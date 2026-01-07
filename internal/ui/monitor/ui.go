@@ -9,13 +9,46 @@ import (
 )
 
 type MonitorView struct {
-	*tview.TextView
-	started bool
+	*tview.Grid
+	sniffView *tview.TextView
+	started   bool
 }
 
 func NewMonitorView() *MonitorView {
+
+	sniffView := tview.NewTextView()
+	sniffView.SetBorder(true).SetTitle("Sniffing")
+
+	grid := tview.NewGrid()
+
+	rows := []int{0, 0, 0}
+	cols := []int{0, 0, 0}
+
+	grid.SetRows(rows...).SetColumns(cols...)
+
+	empty := func() tview.Primitive { return tview.NewBox().SetBorder(true) }
+
+	grid.AddItem(sniffView, 0, 0, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 0, 1, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 0, 2, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 1, 0, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 1, 1, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 1, 2, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 2, 0, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 2, 1, 1, 1, 0, 0, false)
+
+	grid.AddItem(empty(), 2, 2, 1, 1, 0, 0, false)
+
 	mview := &MonitorView{
-		TextView: tview.NewTextView(),
+		Grid:      grid,
+		sniffView: sniffView,
 	}
 
 	state.Subscribe("monitor:packet", mview.OnPacket)
@@ -34,6 +67,6 @@ func (v *MonitorView) OnTabShow() {
 
 func (v *MonitorView) OnPacket(name string, event any) {
 	if packet, ok := event.(sniffing.Packet); ok {
-		fmt.Fprintf(v, "TCP FROM %s to %s\n", packet.Source, packet.Target)
+		fmt.Fprintf(v.sniffView, "TCP FROM %s to %s\n", packet.Source, packet.Target)
 	}
 }
