@@ -1,3 +1,5 @@
+//go:build IPVS_BINARY
+
 package ipvs
 
 import (

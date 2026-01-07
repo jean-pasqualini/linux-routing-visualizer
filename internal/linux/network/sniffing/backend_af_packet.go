@@ -1,5 +1,4 @@
-//go:build medium
-// +build medium
+//go:build SNIFF_AFPACKET
 
 package sniffing
 
@@ -12,12 +11,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 	"golang.org/x/sys/unix"
 )
-
-type Sniffing struct{}
-
-func NewSniffing() *Sniffing { return &Sniffing{} }
 
 func htons(i uint16) uint16 { return (i<<8)&0xff00 | i>>8 }
 
@@ -70,16 +66,13 @@ type Tpacket3Hdr struct {
 	Pad        uint16
 }
 
-type Packet struct {
-	Source string
-	Target string
-}
-
 // Sniff prints Ethernet frames as they arrive.
-func (s *Sniffing) Sniff(ctx context.Context, iface string, filter string, snaplen int32, promisc bool, timeout time.Duration) (chan Packet, error) {
+func (s *SniffingBackend) Sniff(ctx context.Context, iface string, filter string, snaplen int32, promisc bool, timeout time.Duration) (chan Packet, error) {
+	logger := logging.FromContext(ctx)
 	out := make(chan Packet, 4096)
 
 	go func() {
+		logger.Info("sniffing backend go routine")
 		fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(syscall.ETH_P_ALL)))
 		if err != nil {
 			return
@@ -169,7 +162,7 @@ func (s *Sniffing) Sniff(ctx context.Context, iface string, filter string, snapl
 		for i := 0; ; i = (i + 1) % int(req.BlockNr) {
 			select {
 			case <-ctx.Done():
-				fmt.Println("you requested to stop")
+				logger.Info("you requested to stop")
 				close(out)
 				return
 			default:
@@ -185,7 +178,7 @@ func (s *Sniffing) Sniff(ctx context.Context, iface string, filter string, snapl
 			if hdr.BlockStatus&TP_STATUS_USER == 0 {
 				_, err = unix.Poll(pfds, pollTimeoutMs)
 				if err != nil {
-					fmt.Println(err.Error())
+					logger.Info(err.Error())
 				}
 				continue
 			}

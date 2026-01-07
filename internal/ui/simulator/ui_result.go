@@ -34,7 +34,7 @@ func NewResultView() *ResultView {
 	}
 
 	state.Subscribe("simulator_result", rView.showResult)
-	state.Subscribe("logger", rView.addLog)
+	state.Subscribe("simulator:log", rView.addLog)
 
 	return rView
 }

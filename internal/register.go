@@ -1,9 +1,14 @@
 package internal
 
 import (
+	"context"
+	"os"
+	"time"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ipvs"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/routing"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sniffing"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/socket"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
@@ -11,12 +16,14 @@ import (
 	uiipvs "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/ipvs"
 	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
+	"github.com/rivo/tview"
 )
 
-func Register() {
+func Register(app *tview.Application) {
 	logger := logging.NewFilelogger()
+	ctx := logging.WithLogger(context.Background(), logger)
 
-	state.Subscribe("logger", func(name string, event any) {
+	state.Subscribe("app:log", func(name string, event any) {
 		if msg, ok := event.(string); ok {
 			logger.Debug(msg)
 		}
@@ -72,5 +79,24 @@ func Register() {
 		if err == nil {
 			state.Dispatch("routing:response", config)
 		}
+	})
+
+	state.Subscribe("monitor:start", func(name string, event any) {
+		go func() {
+			backend := sniffing.NewSniffingBackend()
+			packetChan, err := backend.Sniff(ctx, os.Getenv("NETDEVICE"), "", 1600, false, 2*time.Second)
+			if err != nil {
+				state.Dispatch("app:log", err.Error())
+				return
+			}
+
+			state.Dispatch("app:log", "monitor:start")
+			for packet := range packetChan {
+				app.QueueUpdate(func() {
+					state.Dispatch("app:log", "packet received")
+					state.Dispatch("monitor:packet", packet)
+				})
+			}
+		}()
 	})
 }

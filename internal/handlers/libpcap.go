@@ -3,9 +3,10 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sniffing"
 	"sync"
 	"time"
+
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sniffing"
 )
 
 type libpcapHandler struct {
@@ -30,8 +31,12 @@ func (h *libpcapHandler) Handle(ctx context.Context) {
 	promisc := h.opts.Promisc
 	timeout := h.opts.Timeout
 
-	s := sniffing.NewSniffing()
-	ch, _ := s.Sniff(ctx, iface, filter, snaplen, promisc, timeout)
+	s := sniffing.NewSniffingBackend()
+	ch, err := s.Sniff(ctx, iface, filter, snaplen, promisc, timeout)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

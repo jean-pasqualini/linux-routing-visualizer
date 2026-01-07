@@ -1,6 +1,12 @@
-LEVEL = medium
+BACKEND_SNIFF = SNIFF_LIBPCAP
+BACKEND_SOCKET = SOCKET_DIAG
+BACKEND_IPVS = IPVS_BINARY
+BACKEND_IPTABLE = IPTABLE_BINARY
+TAGS = $(BACKEND_SNIFF) $(BACKEND_SOCKET) $(BACKEND_IPVS) $(BACKEND_IPTABLE)
 
-DOCKER_RUN = docker run -e TERM=xterm-256color --net=host --pid=host --privileged \
+NETDEVICE = wlp0s20f3
+
+DOCKER_RUN = docker run -e TERM=xterm-256color -e NETDEVICE=$(NETDEVICE) --net=host --pid=host --privileged \
 	-w /app \
 	-v go-build-cache:/root/.cache/go-build \
 	-v go-module-cache:/root/go/pkg/mod \
@@ -26,27 +32,27 @@ setcap:
 build-docker:
 	docker build -t linux-routing:latest .
 run-docker-list:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go
 run-docker-sniff:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go libpcap-dev -i eth0
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go sniff -i $(NETDEVICE) --promisc
 run-docker-socket:
-	$(DOCKER_RUN_NO_CGO) go run -tags $(LEVEL) main.go socket
+	$(DOCKER_RUN_NO_CGO) go run -tags '$(TAGS)' main.go socket
 run-docker-iptable:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go iptable
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go iptable
 run-docker-link:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go link
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go link
 run-docker-ipvs:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go ipvs
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go ipvs
 run-docker-sysctl:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go sysctl
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go sysctl
 run-docker-routing:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go routing
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go routing
 run-docker-bubble:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go bubble
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go bubble
 run-docker-simulate:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go simulate
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go simulate
 run-docker-tui:
-	$(DOCKER_RUN) go run -tags $(LEVEL) main.go tui
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go tui
 dev-docker-tui:
 	$(DOCKER_RUN_DETACHED) /app/kill.sh
 	$(DOCKER_RUN) /app/dev.sh

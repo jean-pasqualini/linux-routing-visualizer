@@ -1,3 +1,5 @@
+//go:build IPTABLE_BINARY
+
 package iptable
 
 import (

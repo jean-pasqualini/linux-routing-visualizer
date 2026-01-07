@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/ipvs"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/monitor"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/routing"
 	ui "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/socket"
@@ -21,11 +22,12 @@ func NewMainPanel() *MainPanel {
 	routingView := routing.NewRoutingView()
 	IPVSView := ipvs.NewIPVSView()
 	socketView := socket.NewSocketView()
+	monitorView := monitor.NewMonitorView()
 
 	pages := tab.NewTabPanelHozitonal(tview.NewPages())
 	pages.AddPage("simulator", simulatorView, true, true)
-	pages.AddPage("monitoring", tview.NewBox(), true, true)
-	pages.AddPage("iptable", iptableView, true, true)
+	pages.AddPage("monitoring", monitorView, true, false)
+	pages.AddPage("iptable", iptableView, true, false)
 	pages.AddPage("routing", routingView, true, false)
 	pages.AddPage("sockets", socketView, true, false)
 	pages.AddPage("interfaces", tview.NewBox(), true, false)

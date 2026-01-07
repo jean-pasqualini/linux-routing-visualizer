@@ -1,3 +1,5 @@
+//go:build SOCKET_DIAG
+
 package socket
 
 import (
@@ -5,11 +7,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strings"
+	"syscall"
+
 	anetlink "github.com/mdlayher/netlink"
 	"github.com/prometheus/procfs"
 	"golang.org/x/sys/unix"
-	"strings"
-	"syscall"
 )
 
 const (

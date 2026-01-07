@@ -1,12 +1,13 @@
 package simulator
 
 import (
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/routing"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"net"
 	"slices"
 	"strings"
+
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/routing"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 )
 
 type SimulatorQuery struct {
@@ -113,7 +114,7 @@ func (s *Simulator) Match(query SimulatorQuery, rule iptable.Rule) (bool, []Simu
 
 func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName string, chainName string) {
 	if chain, ok := s.tables[tableName].Chains[chainName]; ok {
-		state.Dispatch("logger", "\t -> enter chain "+chainName)
+		state.Dispatch("simulator:log", "\t -> enter chain "+chainName)
 		for _, rule := range chain.Rules {
 
 			matchingResult, mismatches := s.Match(s.query, rule)
@@ -122,46 +123,46 @@ func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName st
 				Matched:    matchingResult,
 				Mismatches: mismatches,
 			}
-			state.Dispatch("logger", "\t\t -> should add rule "+ruleMatching.Raw)
+			state.Dispatch("simulator:log", "\t\t -> should add rule "+ruleMatching.Raw)
 			if !matchingResult {
-				state.Dispatch("logger", "\t\t -> matching fail")
+				state.Dispatch("simulator:log", "\t\t -> matching fail")
 				for _, mismatch := range mismatches {
-					state.Dispatch("logger", "\t\t\t -> filter: "+mismatch.Reason)
+					state.Dispatch("simulator:log", "\t\t\t -> filter: "+mismatch.Reason)
 				}
 			}
 
 			chainEvent.Rules = append(chainEvent.Rules, ruleMatching)
 			if ruleMatching.Matched {
 				if rule.JumpTarget == "ACCEPT" || rule.JumpTarget == "DROP" || rule.JumpTarget == "REJECT" || rule.JumpTarget == "RETURN" {
-					state.Dispatch("logger", "\t\t\t -> final decision "+rule.JumpTarget+" for that chain ")
+					state.Dispatch("simulator:log", "\t\t\t -> final decision "+rule.JumpTarget+" for that chain ")
 					return
 				}
 				if rule.JumpTarget == "TRACE" {
-					state.Dispatch("logger", "\t\t\t -> tracing enable")
+					state.Dispatch("simulator:log", "\t\t\t -> tracing enable")
 				}
 				if rule.JumpTarget == "DNAT" {
-					state.Dispatch("logger", "\t\t\t -> dnat")
+					state.Dispatch("simulator:log", "\t\t\t -> dnat")
 				}
 				if rule.JumpTarget == "MASQUERADE" {
-					state.Dispatch("logger", "\t\t\t -> masquerade")
+					state.Dispatch("simulator:log", "\t\t\t -> masquerade")
 				}
 				//s.enterChain(tableName, rule.JumpTarget)
 			}
 		}
 		if chain.Policy != "-" {
-			state.Dispatch("logger", "\t\t\t -> final decision "+chain.Policy+" for that chain ")
+			state.Dispatch("simulator:log", "\t\t\t -> final decision "+chain.Policy+" for that chain ")
 		}
 	} else {
-		state.Dispatch("logger", "\t -> not found chain "+chainName)
+		state.Dispatch("simulator:log", "\t -> not found chain "+chainName)
 	}
 }
 
 func (s *Simulator) enterTable(chainEvent *SimulatorNetfilterChain, tableName string) {
 	if _, ok := s.tables[tableName]; ok {
-		state.Dispatch("logger", "-> enter table "+tableName)
+		state.Dispatch("simulator:log", "-> enter table "+tableName)
 		s.enterChain(chainEvent, tableName, chainEvent.Name)
 	} else {
-		state.Dispatch("logger", "-> not found table "+tableName)
+		state.Dispatch("simulator:log", "-> not found table "+tableName)
 	}
 }
 
@@ -174,12 +175,12 @@ func (s *Simulator) walkBuiltinChain(chainEvent *SimulatorNetfilterChain) {
 func (s *Simulator) Simulate() SimulatorResult {
 	sourceIP := net.ParseIP(s.query.Target.IP)
 	if sourceIP == nil {
-		state.Dispatch("logger", "invalid source ip")
+		state.Dispatch("simulator:log", "invalid source ip")
 		return SimulatorResult{}
 	}
 	targetIP := net.ParseIP(s.query.Target.IP)
 	if targetIP == nil {
-		state.Dispatch("logger", "invalid target ip")
+		state.Dispatch("simulator:log", "invalid target ip")
 		return SimulatorResult{}
 	}
 	s.result.Events = append(s.result.Events, SimulatorIncomingInterface{

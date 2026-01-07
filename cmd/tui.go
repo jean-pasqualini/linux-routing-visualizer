@@ -22,7 +22,7 @@ var tuiCmd = &cobra.Command{
 
 		app := tview.NewApplication()
 
-		internal.Register()
+		internal.Register(app)
 
 		tabPanel := ui.NewSidePanel()
 		mainPanel := ui.NewMainPanel()
