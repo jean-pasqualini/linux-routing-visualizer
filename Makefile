@@ -39,6 +39,12 @@ build-docker:
 	docker build -t linux-routing:latest .
 run-docker-list:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go
+run-docker-netdevice:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go netdevice
+run-docker-conntrack:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go conntrack
+run-docker-arp:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go arp
 run-docker-sniff:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go sniff -i $(NETDEVICE) --promisc
 run-docker-socket:

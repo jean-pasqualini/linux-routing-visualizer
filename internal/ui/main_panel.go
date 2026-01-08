@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/arp"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/conntrack"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/interfaces"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/ipvs"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/monitor"
@@ -25,14 +28,19 @@ func NewMainPanel() *MainPanel {
 	socketView := socket.NewSocketView()
 	monitorView := monitor.NewMonitorView()
 	sysctlView := sysctl.NewSysctlView()
+	arpView := arp.NewArpView()
+	interfacesView := interfaces.NewInterfacesView()
+	conntrackView := conntrack.NewConntrackView()
 
 	pages := tab.NewTabPanelHozitonal(tview.NewPages())
 	pages.AddPage("simulator", simulatorView, true, true)
 	pages.AddPage("monitoring", monitorView, true, false)
+	pages.AddPage("arp", arpView, true, false)
+	pages.AddPage("conntrack", conntrackView, true, false)
 	pages.AddPage("iptable", iptableView, true, false)
 	pages.AddPage("routing", routingView, true, false)
 	pages.AddPage("sockets", socketView, true, false)
-	pages.AddPage("interfaces", tview.NewBox(), true, false)
+	pages.AddPage("interfaces", interfacesView, true, false)
 	pages.AddPage("sysctl", sysctlView, true, false)
 	pages.AddPage("ipvs", IPVSView, true, false)
 

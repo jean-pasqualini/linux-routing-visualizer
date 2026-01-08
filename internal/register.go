@@ -2,6 +2,9 @@ package internal
 
 import (
 	"context"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/arp"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/conntrack"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/netdevice"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sysctl"
 	"os"
 	"time"
@@ -65,6 +68,30 @@ func Register(app *tview.Application) {
 	state.Subscribe("socket:request", func(name string, event any) {
 		sBackend := socket.NewSocketBackend()
 		state.Dispatch("socket:response", sBackend.ListListeners())
+	})
+
+	state.Subscribe("arp:request", func(name string, event any) {
+		backend := arp.NewArpBackend()
+		list, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("arp:response", list)
+		}
+	})
+
+	state.Subscribe("conntrack:request", func(name string, event any) {
+		backend := conntrack.NewConntrackBackend()
+		list, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("conntrack:response", list)
+		}
+	})
+
+	state.Subscribe("netdevice:request", func(name string, event any) {
+		backend := netdevice.NewInterfacesBackend()
+		list, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("netdevice:response", list)
+		}
 	})
 
 	state.Subscribe("ipvs:request", func(name string, event any) {

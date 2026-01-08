@@ -6,6 +6,7 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/florianl/go-conntrack v0.5.0
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/google/gopacket v1.1.19
 	github.com/k0kubun/pp v3.0.1+incompatible
@@ -16,6 +17,7 @@ require (
 	github.com/rivo/tview v0.42.0
 	github.com/spf13/cobra v1.10.2
 	github.com/vishvananda/netlink v1.3.1
+	golang.org/x/sys v0.37.0
 )
 
 require (
@@ -44,7 +46,6 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )

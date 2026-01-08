@@ -3,3 +3,4 @@ RUN apt update && apt install -y iptables golang-go ca-certificates inotify-tool
 RUN apt install -y iproute2
 RUN apt install -y libpcap-dev
 RUN apt install -y ipvsadm
+RUN apt install -y arptables
