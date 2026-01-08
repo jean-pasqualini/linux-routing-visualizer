@@ -2,6 +2,7 @@ package socket
 
 import (
 	"fmt"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/socket"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/k0kubun/pp"
@@ -43,7 +44,7 @@ func (v *SocketView) onDisplay(name string, event any) {
 	fmt.Fprintln(w, pp.Sprint(event))
 	if sDescList, ok := event.([]socket.SocketDesc); ok {
 		for _, sDesc := range sDescList {
-			fmt.Fprintf(v.humanText, "%s(%d) is listening on port %d\n", sDesc.Comm, sDesc.Port, sDesc.PID)
+			fmt.Fprintf(v.humanText, "%s(%d) is listening on port %d\n", sDesc.Comm, sDesc.PID, sDesc.Port)
 		}
 	}
 }
