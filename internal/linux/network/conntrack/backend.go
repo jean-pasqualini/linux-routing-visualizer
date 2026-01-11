@@ -9,14 +9,6 @@ func NewConntrackBackend() *ConntrackBackend {
 	return &ConntrackBackend{}
 }
 
-type ConnectionTracked struct {
-	SrcIP   string
-	DstIP   string
-	SrcPort int
-	DstPort int
-	Status  int
-}
-
 func (b *ConntrackBackend) Fetch() ([]ConnectionTracked, error) {
 	list := []ConnectionTracked{}
 	nfct, err := conntrack.Open(&conntrack.Config{})
@@ -31,13 +23,7 @@ func (b *ConntrackBackend) Fetch() ([]ConnectionTracked, error) {
 	}
 
 	for _, f := range flows {
-		list = append(list, ConnectionTracked{
-			SrcIP:   f.Origin.Src.String(),
-			DstIP:   f.Origin.Dst.String(),
-			SrcPort: int(*f.Origin.Proto.SrcPort),
-			DstPort: int(*f.Origin.Proto.DstPort),
-			Status:  int(*f.Status),
-		})
+		list = append(list, convert(f))
 	}
 
 	return list, nil
