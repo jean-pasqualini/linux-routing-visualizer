@@ -2,7 +2,6 @@ package conntrack
 
 import (
 	"github.com/florianl/go-conntrack"
-	"github.com/k0kubun/pp"
 )
 
 func convertIPTupple(f *conntrack.IPTuple) IPTupple {
@@ -31,7 +30,7 @@ func convertIPTupple(f *conntrack.IPTuple) IPTupple {
 
 func convert(f conntrack.Con) ConnectionTracked {
 	tracked := ConnectionTracked{}
-	pp.Println(f.NatSrc)
+	//pp.Println(f.NatSrc)
 	tracked.Origin = convertIPTupple(f.Origin)
 	tracked.Return = convertIPTupple(f.Reply)
 	tracked.Status = convertStatus(f.Status)
