@@ -2,6 +2,7 @@ package conntrack
 
 import (
 	"fmt"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/conntrack"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/k0kubun/pp"
@@ -43,7 +44,7 @@ func (v *ConntrackView) OnConntrackResponse(name string, event any) {
 		pp.Fprint(tview.ANSIWriter(v.goText), connList)
 		for _, conn := range connList {
 			fmt.Fprintf(v.humanText, "%s -> %s\n", conn.Origin.SrcIP, conn.Origin.DstIP)
-			fmt.Fprintf(v.humanText, "%s -> %s\n", conn.Return.SrcIP, conn.Return.DstIP)
+			fmt.Fprintf(v.humanText, "%s <- %s\n", conn.Return.SrcIP, conn.Return.DstIP)
 			fmt.Fprintln(v.humanText, "---------")
 		}
 	}

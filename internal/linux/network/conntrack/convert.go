@@ -31,10 +31,24 @@ func convertIPTupple(f *conntrack.IPTuple) IPTupple {
 func convert(f conntrack.Con) ConnectionTracked {
 	tracked := ConnectionTracked{}
 	//pp.Println(f.NatSrc)
+	tracked.Translation = convertTranslation(f.Origin, f.Reply)
 	tracked.Origin = convertIPTupple(f.Origin)
 	tracked.Return = convertIPTupple(f.Reply)
 	tracked.Status = convertStatus(f.Status)
 	return tracked
+}
+
+func convertTranslation(orig *conntrack.IPTuple, reply *conntrack.IPTuple) string {
+	if !orig.Src.Equal(*reply.Dst) && !orig.Dst.Equal(*reply.Src) {
+		return "SDNAT"
+	}
+	if !orig.Src.Equal(*reply.Dst) {
+		return "SNAT"
+	}
+	if !orig.Dst.Equal(*reply.Src) {
+		return "DNAT"
+	}
+	return "NONE"
 }
 
 func convertStatus(status *uint32) []string {

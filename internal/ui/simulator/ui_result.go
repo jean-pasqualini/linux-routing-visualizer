@@ -24,14 +24,14 @@ func NewResultView() *ResultView {
 		}
 	})
 	logView := tview.NewTextView()
-	pages := tab.NewTabPanelHozitonal(tview.NewPages())
+	pages := tab.NewTabPanelTop(tview.NewPages())
 	pages.AddPage("Rules", treeView, true, true)
 	pages.AddPage("Logs", logView, true, false)
 	rView := &ResultView{
-		TabPanelHorizontal: pages,
-		treeView:           treeView,
-		logView:            logView,
-		showUnmatched:      true,
+		TabPanel:      pages,
+		treeView:      treeView,
+		logView:       logView,
+		showUnmatched: true,
 	}
 
 	state.Subscribe("simulator_result", rView.showResult)
@@ -41,7 +41,7 @@ func NewResultView() *ResultView {
 }
 
 type ResultView struct {
-	*tab.TabPanelHorizontal
+	*tab.TabPanel
 	treeView      *tview.TreeView
 	logView       *tview.TextView
 	showUnmatched bool
@@ -66,7 +66,7 @@ func (v *ResultView) createNode(txt string) *tview.TreeNode {
 	return tview.NewTreeNode(txt).SetTextStyle(stl)
 }
 
-func (v *ResultView) chainIcon(chain simulator.SimulatorNetfilterChain) string {
+func (v *ResultView) chainIcon(chain simulator.SimulatorNetfilterChainEvent) string {
 	if chain.Decision == "DROP" {
 		return "🕳️"
 	}
@@ -86,10 +86,12 @@ func (v *ResultView) chainIcon(chain simulator.SimulatorNetfilterChain) string {
 	return "🤷"
 }
 
-func (v *ResultView) ruleIcon(rule simulator.SimulatorResultRule) string {
+func (v *ResultView) ruleIcon(rule simulator.SimulatorResultRuleEvent) string {
 	if !rule.Matched {
 		return "🙈"
 	}
+	return "✅"
+
 	if rule.Action == "JUMP" {
 		return "🦘"
 	}
@@ -117,43 +119,67 @@ func (v *ResultView) ruleIcon(rule simulator.SimulatorResultRule) string {
 	return "🤷"
 }
 
-func (v *ResultView) processNode(node *tview.TreeNode, events []simulator.SimulatorEvent) {
+func (v *ResultView) processChainNode(chain simulator.SimulatorNetfilterChainEvent) *tview.TreeNode {
+	chainIcon := v.chainIcon(chain)
+	// 🔗
+	chainNode := v.createNode("📍 " + chain.Name + " " + chainIcon)
+
+	return chainNode
+}
+
+func (v *ResultView) processNatEventNode(natEvent simulator.SimulatorNetfilterNatEvent) *tview.TreeNode {
+	natEventNode := v.createNode(fmt.Sprintf("Translate IP from %s to %s", natEvent.OldIP, natEvent.NewIP))
+	return natEventNode
+}
+
+func (v *ResultView) processRuleNode(rule simulator.SimulatorResultRuleEvent) *tview.TreeNode {
+	icon := v.ruleIcon(rule)
+	color := "#39FF14::b"
+	if !rule.Matched {
+		color = "lightgrey:-:-"
+	}
+	outText := fmt.Sprintf("%s [%s]%s[white:-:-]", icon, color, rule.Raw)
+	for _, mismatch := range rule.Mismatches {
+		outText = text.TagColorRegions("#6D071A::b", color, outText, mismatch.Raw+" ")
+	}
+	ruleNode := v.createNode(outText)
+	if rule.JumpChain != nil {
+		v.processNode(ruleNode, []simulator.SimulatorEvent{*rule.JumpChain})
+	}
+
+	return ruleNode
+}
+
+func (v *ResultView) processRoutingNode(route simulator.SimulatorNetrouting) *tview.TreeNode {
+	return v.createNode("🧭 " + route.RouteType)
+}
+
+func (v *ResultView) processNode(node *tview.TreeNode, events []simulator.SimulatorEvent) *tview.TreeNode {
 	for _, event := range events {
 		if incoming, ok := event.(simulator.SimulatorIncomingInterface); ok {
 			node.SetText("🖥️ packet in interface " + incoming.Interface)
 		}
-		if chain, ok := event.(simulator.SimulatorNetfilterChain); ok {
-			chainIcon := v.chainIcon(chain)
-			// 🔗
-			chainNode := v.createNode("📍 " + chain.Name + " " + chainIcon)
-			for _, rule := range chain.Rules {
-				icon := v.ruleIcon(rule)
-				color := "#39FF14::b"
-				if !rule.Matched {
-					color = "lightgrey:-:-"
-				}
-				outText := fmt.Sprintf("%s [%s]%s[white:-:-]", icon, color, rule.Raw)
-				for _, mismatch := range rule.Mismatches {
-					outText = text.TagColorRegions("#6D071A::b", color, outText, mismatch.Raw+" ")
-				}
-				ruleNode := v.createNode(outText)
-				if rule.JumpChain != nil {
-					v.processNode(ruleNode, []simulator.SimulatorEvent{*rule.JumpChain})
-				}
-				chainNode.AddChild(ruleNode)
-			}
-			chainNode.CollapseAll()
-			node.AddChild(chainNode)
+		if rule, ok := event.(simulator.SimulatorResultRuleEvent); ok {
+			node.AddChild(v.processRuleNode(rule))
+		}
+		if natEvent, ok := event.(simulator.SimulatorNetfilterNatEvent); ok {
+			node.AddChild(v.processNatEventNode(natEvent))
+		}
+		if chain, ok := event.(simulator.SimulatorNetfilterChainEvent); ok {
+			node.AddChild(v.processNode(v.processChainNode(chain), chain.Events))
 		}
 		if route, ok := event.(simulator.SimulatorNetrouting); ok {
-			node.AddChild(v.createNode("🧭 " + route.RouteType))
+			node.AddChild(v.processRoutingNode(route))
 		}
 	}
+
+	return node
 }
 
 func (v *ResultView) SetResult(result simulator.SimulatorResult) {
 	rootNode := tview.NewTreeNode("result")
 	v.processNode(rootNode, result.Events)
+	rootNode.CollapseAll()
 
 	v.treeView.SetRoot(rootNode)
 }

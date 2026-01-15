@@ -35,18 +35,23 @@ type SimulatorMismatch struct {
 	Raw    string
 }
 
-type SimulatorResultRule struct {
+type SimulatorResultRuleEvent struct {
 	Raw        string
-	JumpChain  *SimulatorNetfilterChain
+	JumpChain  *SimulatorNetfilterChainEvent
 	Action     string
 	Matched    bool
 	Mismatches []SimulatorMismatch
 }
 
-type SimulatorNetfilterChain struct {
+type SimulatorNetfilterNatEvent struct {
+	OldIP string
+	NewIP string
+}
+
+type SimulatorNetfilterChainEvent struct {
 	Name     string
 	Decision string
-	Rules    []SimulatorResultRule
+	Events   []SimulatorEvent
 }
 
 type SimulatorNetrouting struct {
@@ -114,13 +119,17 @@ func (s *Simulator) Match(query SimulatorQuery, rule iptable.Rule) (bool, []Simu
 	return len(reasons) == 0, reasons
 }
 
-func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName string, chainName string) {
+func (s *Simulator) isJumpAction(target string) bool {
+	return slices.Contains([]string{"ACCEPT", "DROP", "REJECT", "RETURN", "TRACE", "SNAT", "DNAT", "MASQUERADE"}, target)
+}
+
+func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChainEvent, tableName string, chainName string) {
 	if chain, ok := s.tables[tableName].Chains[chainName]; ok {
 		state.Dispatch("simulator:log", "\t -> enter chain "+chainName)
 		for _, rule := range chain.Rules {
 
 			matchingResult, mismatches := s.Match(s.query, rule)
-			ruleMatching := SimulatorResultRule{
+			ruleMatching := SimulatorResultRuleEvent{
 				Raw:        rule.Raw,
 				Matched:    matchingResult,
 				Mismatches: mismatches,
@@ -131,6 +140,10 @@ func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName st
 				for _, mismatch := range mismatches {
 					state.Dispatch("simulator:log", "\t\t\t -> filter: "+mismatch.Reason)
 				}
+			}
+
+			if ruleMatching.Matched || s.query.IncludeUnmatched {
+				chainEvent.Events = append(chainEvent.Events, ruleMatching)
 			}
 
 			if ruleMatching.Matched {
@@ -146,22 +159,22 @@ func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName st
 					ruleMatching.Action = "DNAT"
 					state.Dispatch("simulator:log", "\t\t\t -> dnat")
 				} else if rule.JumpTarget == "MASQUERADE" {
+					ip, err := routing.GetIPFromNetDevice(s.query.Target.Device)
+					if err == nil {
+						chainEvent.Events = append(chainEvent.Events, SimulatorNetfilterNatEvent{
+							OldIP: s.query.Source.IP,
+							NewIP: ip.String(),
+						})
+					}
 					ruleMatching.Action = "MASQUERADE"
 					state.Dispatch("simulator:log", "\t\t\t -> masquerade")
 				} else {
 					ruleMatching.Action = "JUMP"
-					jumpChain := &SimulatorNetfilterChain{Name: rule.JumpTarget, Decision: "NONE"}
+					jumpChain := &SimulatorNetfilterChainEvent{Name: rule.JumpTarget, Decision: "NONE"}
 					s.enterChain(jumpChain, tableName, rule.JumpTarget)
-					ruleMatching.JumpChain = jumpChain
+					chainEvent.Events = append(chainEvent.Events, *jumpChain)
 				}
 			}
-
-			// Include it after not as a child
-
-			if ruleMatching.Matched || s.query.IncludeUnmatched {
-				chainEvent.Rules = append(chainEvent.Rules, ruleMatching)
-			}
-
 		}
 		if chain.Policy != "-" {
 			chainEvent.Decision = chain.Policy
@@ -174,7 +187,7 @@ func (s *Simulator) enterChain(chainEvent *SimulatorNetfilterChain, tableName st
 	}
 }
 
-func (s *Simulator) enterTable(chainEvent *SimulatorNetfilterChain, tableName string) {
+func (s *Simulator) enterTable(chainEvent *SimulatorNetfilterChainEvent, tableName string) {
 	if _, ok := s.tables[tableName]; ok {
 		state.Dispatch("simulator:log", "-> enter table "+tableName)
 		s.enterChain(chainEvent, tableName, chainEvent.Name)
@@ -183,7 +196,7 @@ func (s *Simulator) enterTable(chainEvent *SimulatorNetfilterChain, tableName st
 	}
 }
 
-func (s *Simulator) walkBuiltinChain(chainEvent *SimulatorNetfilterChain) {
+func (s *Simulator) walkBuiltinChain(chainEvent *SimulatorNetfilterChainEvent) {
 	for _, tableName := range iptable.TablesList {
 		s.enterTable(chainEvent, string(tableName))
 	}
@@ -206,7 +219,7 @@ func (s *Simulator) Simulate() SimulatorResult {
 
 	// We consider for now that it is an incoming packet
 	// Chain PREPROUTING
-	preroutingEvent := SimulatorNetfilterChain{Name: "PREROUTING"}
+	preroutingEvent := SimulatorNetfilterChainEvent{Name: "PREROUTING"}
 	s.walkBuiltinChain(&preroutingEvent)
 	s.result.Events = append(s.result.Events, preroutingEvent)
 
@@ -215,7 +228,7 @@ func (s *Simulator) Simulate() SimulatorResult {
 			RouteType: "local",
 		})
 		// Chain INPUT
-		inputEvent := SimulatorNetfilterChain{Name: "INPUT"}
+		inputEvent := SimulatorNetfilterChainEvent{Name: "INPUT"}
 		s.walkBuiltinChain(&inputEvent)
 		s.result.Events = append(s.result.Events, inputEvent)
 	} else {
@@ -223,10 +236,10 @@ func (s *Simulator) Simulate() SimulatorResult {
 			RouteType: "nolocal",
 		})
 		// Chain FORWARD
-		forwardEvent := SimulatorNetfilterChain{Name: "FORWARD"}
+		forwardEvent := SimulatorNetfilterChainEvent{Name: "FORWARD"}
 		s.walkBuiltinChain(&forwardEvent)
 		s.result.Events = append(s.result.Events, forwardEvent)
-		postRoutingEvent := SimulatorNetfilterChain{Name: "POSTROUTING"}
+		postRoutingEvent := SimulatorNetfilterChainEvent{Name: "POSTROUTING"}
 		s.walkBuiltinChain(&postRoutingEvent)
 		s.result.Events = append(s.result.Events, postRoutingEvent)
 	}

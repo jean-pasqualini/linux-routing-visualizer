@@ -27,7 +27,6 @@ var tuiCmd = &cobra.Command{
 
 		internal.Register(app)
 
-		tabPanel := ui.NewSidePanel()
 		mainPanel := ui.NewMainPanel()
 
 		layout := tview.NewFlex()
@@ -36,7 +35,6 @@ var tuiCmd = &cobra.Command{
 			layout.AddItem(logPanel, 20, 0, false)
 		}
 
-		layout.AddItem(tabPanel, 50, 0, true)
 		layout.AddItem(mainPanel, 0, 1, false)
 
 		frame := tview.NewFrame(layout).

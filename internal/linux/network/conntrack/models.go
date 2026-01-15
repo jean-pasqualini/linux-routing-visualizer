@@ -23,7 +23,8 @@ type IPTupple struct {
 }
 
 type ConnectionTracked struct {
-	Origin IPTupple
-	Return IPTupple
-	Status []string
+	Origin      IPTupple
+	Return      IPTupple
+	Translation string
+	Status      []string
 }

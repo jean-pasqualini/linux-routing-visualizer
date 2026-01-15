@@ -51,6 +51,8 @@ run-docker-socket:
 	$(DOCKER_RUN_NO_CGO) go run -tags '$(TAGS)' main.go socket
 run-docker-iptable:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go iptable
+run-docker-arptable:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go arptable
 run-docker-link:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go link
 run-docker-ipvs:

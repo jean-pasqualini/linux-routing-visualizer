@@ -2,12 +2,14 @@ package internal
 
 import (
 	"context"
+	"os"
+	"time"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/arp"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/arptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/conntrack"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/netdevice"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sysctl"
-	"os"
-	"time"
 
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ipvs"
@@ -16,8 +18,8 @@ import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/socket"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/logging"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/simulator"
-	uiiptable "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/iptable"
 	uiipvs "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/ipvs"
+	uiiptable "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/netfilter/iptable"
 	uisimulator "github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/simulator"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/rivo/tview"
@@ -75,6 +77,14 @@ func Register(app *tview.Application) {
 		list, err := backend.Fetch()
 		if err == nil {
 			state.Dispatch("arp:response", list)
+		}
+	})
+
+	state.Subscribe("arptable:request", func(name string, event any) {
+		backend := arptable.NewArpTableBackend()
+		list, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("arptable:response", list)
 		}
 	})
 

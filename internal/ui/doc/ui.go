@@ -1,25 +1,28 @@
-package ui
+package doc
 
 import (
+	"strings"
+
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/iptable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/diagram"
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/tab"
 	"github.com/rivo/tview"
-	"strings"
 )
 
-func NewSidePanel() tview.Primitive {
+func NewDocumentationView() tview.Primitive {
 
 	newNode := func(title string) *diagram.Node {
 		return &diagram.Node{X: 15, W: 15, H: 5, Title: title}
 	}
 
-	buildCanvas := func(names []string) *diagram.DiagramCanvas {
+	buildCanvas := func(names []string, title string) *diagram.DiagramCanvas {
 		canvas := diagram.NewDiagramCanvas(80, 500)
 
 		for _, name := range names {
 			canvas.AddNode(newNode(name))
 		}
+
+		canvas.SetBorder(true)
+		canvas.SetTitle(title)
 
 		return canvas
 	}
@@ -45,17 +48,11 @@ func NewSidePanel() tview.Primitive {
 		return output
 	}
 
-	/**
-	tables := tview.NewTextView().
-		SetScrollable(true).
-		SetWrap(false). // important pour ANSI
-		SetDynamicColors(true)
-	*/
-	tabContainer := tab.NewTabPanelHozitonal(tview.NewPages())
-	tabContainer.AddPage("Tables", buildCanvas(listFromTables(iptable.TablesList[:])), true, true)
-	tabContainer.AddPage("Inbound", buildCanvas(listFromChains(iptable.InboundChaining[:])), true, true)
-	tabContainer.AddPage("Forward", buildCanvas(listFromChains(iptable.ForwardChaining[:])), true, true)
-	tabContainer.AddPage("Outbound", buildCanvas(listFromChains(iptable.OutboundChaining[:])), true, true)
+	container := tview.NewFlex()
+	container.AddItem(buildCanvas(listFromTables(iptable.TablesList[:]), "tables"), 0, 1, false)
+	container.AddItem(buildCanvas(listFromChains(iptable.InboundChaining[:]), "inbound"), 0, 1, false)
+	container.AddItem(buildCanvas(listFromChains(iptable.ForwardChaining[:]), "forward"), 0, 1, false)
+	container.AddItem(buildCanvas(listFromChains(iptable.OutboundChaining[:]), "outbound"), 0, 1, false)
 
-	return tabContainer
+	return container
 }

@@ -10,7 +10,7 @@ import (
 )
 
 type IpTableView struct {
-	*tab.TabPanelHorizontal
+	*tab.TabPanel
 	parsedView *textview.TextViewSearchable
 	rawView    *tview.TextView
 }
@@ -29,14 +29,14 @@ func NewIpTableView() *IpTableView {
 		SetWrap(true).
 		SetDynamicColors(true)
 
-	pages := tab.NewTabPanelHozitonal(tview.NewPages())
+	pages := tab.NewTabPanelTop(tview.NewPages())
 	pages.AddPage("raw", rawView, true, true)
 	pages.AddPage("parsed", parsedView, true, true)
 
 	v := &IpTableView{
-		parsedView:         parsedView,
-		rawView:            rawView,
-		TabPanelHorizontal: pages,
+		parsedView: parsedView,
+		rawView:    rawView,
+		TabPanel:   pages,
 	}
 
 	state.Subscribe("iptables:response", v.render)
