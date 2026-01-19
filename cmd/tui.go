@@ -7,6 +7,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/footer"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/log"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
@@ -28,14 +29,17 @@ var tuiCmd = &cobra.Command{
 		internal.Register(app)
 
 		mainPanel := ui.NewMainPanel()
+		footerView := footer.NewFooterView()
 
 		layout := tview.NewFlex()
+		layout.SetDirection(tview.FlexRow)
 		if debugMode {
 			logPanel := log.NewLogPanel()
 			layout.AddItem(logPanel, 20, 0, false)
 		}
 
 		layout.AddItem(mainPanel, 0, 1, false)
+		layout.AddItem(footerView, 5, 0, false)
 
 		frame := tview.NewFrame(layout).
 			SetBorders(0, 0, 0, 0, 0, 0).

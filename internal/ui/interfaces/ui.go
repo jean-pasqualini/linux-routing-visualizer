@@ -24,6 +24,7 @@ func (v *InterfacesView) OnTabShow() {
 }
 
 func (v *InterfacesView) OnResponse(name string, event any) {
+	v.Clear()
 	if list, ok := event.([]netdevice.NetDeviceSpec); ok {
 		pp.Fprint(tview.ANSIWriter(v), list)
 	}

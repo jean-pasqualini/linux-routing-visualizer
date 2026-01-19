@@ -27,6 +27,7 @@ func (v *BridgeView) OnTabShow() {
 }
 
 func (v *BridgeView) OnResponse(name string, event any) {
+	v.Clear()
 	if list, ok := event.([]bridge.BridgeSpec); ok {
 		pp.Fprintln(tview.ANSIWriter(v), list)
 	}

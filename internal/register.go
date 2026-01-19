@@ -2,8 +2,12 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/bridge"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ns"
+	"golang.org/x/sys/unix"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/arp"
@@ -29,6 +33,51 @@ import (
 func Register(app *tview.Application) {
 	logger := logging.NewFilelogger()
 	ctx := logging.WithLogger(context.Background(), logger)
+	var currentNamespace *string
+	withinNamespace := func(next func(name string, event any)) func(name string, event any) {
+		return func(name string, event any) {
+			if currentNamespace == nil {
+				next(name, event)
+				return
+			}
+			// Wrap the operation in a specific network namespace
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
+			origNS, err := os.Open("/proc/self/ns/net")
+			if err != nil {
+				state.Dispatch("app:log", fmt.Sprintf("open self ns: %s\n", err.Error()))
+				return
+			}
+			defer origNS.Close()
+			newNs, err := os.Open(*currentNamespace)
+			if err != nil {
+				state.Dispatch("app:log", fmt.Sprintf("open new ns: %s\n", err.Error()))
+				return
+			}
+			defer newNs.Close()
+			if err := unix.Setns(int(newNs.Fd()), unix.CLONE_NEWNET); err != nil {
+				state.Dispatch("app:log", fmt.Sprintf("switch to new ns: %s\n", err.Error()))
+				return
+			}
+			next(name, event)
+			if err := unix.Setns(int(origNS.Fd()), unix.CLONE_NEWNET); err != nil {
+				state.Dispatch("app:log", fmt.Sprintf("switch back ns: %s\n", err.Error()))
+				return
+			}
+		}
+	}
+
+	state.Subscribe("namespace:change", func(name string, event any) {
+		if newNs, ok := event.(string); ok {
+			if newNs == "" {
+				state.Dispatch("app:log", fmt.Sprintf("swich back ns\n"))
+				currentNamespace = nil
+			} else {
+				state.Dispatch("app:log", fmt.Sprintf("change ns -> %s\n", newNs))
+				currentNamespace = &newNs
+			}
+		}
+	})
 
 	state.Subscribe("app:log", func(name string, event any) {
 		if msg, ok := event.(string); ok {
@@ -65,6 +114,13 @@ func Register(app *tview.Application) {
 				},
 			}, tables)
 			state.Dispatch("simulator_result", sim.Simulate())
+		}
+	})
+
+	state.Subscribe("namespace:request", func(name string, event any) {
+		list, err := ns.ListNamespace()
+		if err == nil {
+			state.Dispatch("namespace:response", ns.NamespaceList(list))
 		}
 	})
 
@@ -105,13 +161,13 @@ func Register(app *tview.Application) {
 		}
 	})
 
-	state.Subscribe("netdevice:request", func(name string, event any) {
+	state.Subscribe("netdevice:request", withinNamespace(func(name string, event any) {
 		backend := netdevice.NewInterfacesBackend()
 		list, err := backend.Fetch()
 		if err == nil {
 			state.Dispatch("netdevice:response", list)
 		}
-	})
+	}))
 
 	state.Subscribe("ipvs:request", func(name string, event any) {
 		sBackend := ipvs.NewIPVSBackend()

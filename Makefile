@@ -33,6 +33,9 @@ DOCKER_RUN_DETACHED = docker run -d -e TERM=xterm-256color --net=host --privileg
 	-v $(CURDIR):/app \
 	--rm -it linux-routing
 
+show-flags:
+	@echo "$(TAGS)"
+
 setcap:
 	sudo setcap cap_net_admin+ep /usr/sbin/xtables-nft-multi
 build-docker:
