@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/bridge"
 	"os"
 	"time"
 
@@ -85,6 +86,14 @@ func Register(app *tview.Application) {
 		list, err := backend.Fetch()
 		if err == nil {
 			state.Dispatch("arptable:response", list)
+		}
+	})
+
+	state.Subscribe("bridge:request", func(name string, event any) {
+		backend := bridge.NewBridgeBackend()
+		list, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("bridge:response", list)
 		}
 	})
 

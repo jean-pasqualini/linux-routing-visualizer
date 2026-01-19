@@ -57,6 +57,12 @@ run-docker-link:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go link
 run-docker-ipvs:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go ipvs
+run-docker-ns:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go ns
+run-docker-bridge:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go bridge
+run-docker-interfaces:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go interfaces
 run-docker-sysctl:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go sysctl
 run-docker-routing:

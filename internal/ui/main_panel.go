@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/arp"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/bridge"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/doc"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/interfaces"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/ipvs"
@@ -31,6 +32,7 @@ func NewMainPanel() *MainPanel {
 	interfacesView := interfaces.NewInterfacesView()
 	documentationView := doc.NewDocumentationView()
 	netFilterView := netfilter.NewNetfilterView()
+	bridgeView := bridge.NewBridgeView()
 
 	pages := tab.NewTabPanelTop(tview.NewPages())
 	pages.AddPage("simulator", simulatorView, true, true)
@@ -40,7 +42,7 @@ func NewMainPanel() *MainPanel {
 	pages.AddPage("routing", routingView, true, false)
 	pages.AddPage("sockets", socketView, true, false)
 	pages.AddPage("interfaces", interfacesView, true, false)
-	pages.AddPage("bridges", tview.NewBox(), true, false)
+	pages.AddPage("bridges", bridgeView, true, false)
 	pages.AddPage("sysctl", sysctlView, true, false)
 	pages.AddPage("ipvs", IPVSView, true, false)
 	pages.AddPage("documentation", documentationView, true, false)
