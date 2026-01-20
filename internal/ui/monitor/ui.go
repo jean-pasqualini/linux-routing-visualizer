@@ -1,28 +1,26 @@
 package monitor
 
 import (
-	"fmt"
-
-	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/sniffing"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/monitor/conntrack"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/monitor/sniff"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/ui/state"
 	"github.com/rivo/tview"
 )
 
 type MonitorView struct {
 	*tview.Grid
-	sniffView *tview.TextView
-	started   bool
+	started bool
 }
 
 func NewMonitorView() *MonitorView {
 
-	sniffView := tview.NewTextView()
-	sniffView.SetBorder(true).SetTitle("Sniffing")
+	sniffView := sniff.NewSniffView()
+	conntrackView := conntrack.NewContrackView()
 
 	grid := tview.NewGrid()
 
-	rows := []int{0, 0, 0}
-	cols := []int{0, 0, 0}
+	rows := []int{0, 0}
+	cols := []int{0, 0}
 
 	grid.SetRows(rows...).SetColumns(cols...)
 
@@ -30,28 +28,15 @@ func NewMonitorView() *MonitorView {
 
 	grid.AddItem(sniffView, 0, 0, 1, 1, 0, 0, false)
 
-	grid.AddItem(empty(), 0, 1, 1, 1, 0, 0, false)
-
-	grid.AddItem(empty(), 0, 2, 1, 1, 0, 0, false)
+	grid.AddItem(conntrackView, 0, 1, 1, 1, 0, 0, false)
 
 	grid.AddItem(empty(), 1, 0, 1, 1, 0, 0, false)
 
 	grid.AddItem(empty(), 1, 1, 1, 1, 0, 0, false)
 
-	grid.AddItem(empty(), 1, 2, 1, 1, 0, 0, false)
-
-	grid.AddItem(empty(), 2, 0, 1, 1, 0, 0, false)
-
-	grid.AddItem(empty(), 2, 1, 1, 1, 0, 0, false)
-
-	grid.AddItem(empty(), 2, 2, 1, 1, 0, 0, false)
-
 	mview := &MonitorView{
-		Grid:      grid,
-		sniffView: sniffView,
+		Grid: grid,
 	}
-
-	state.Subscribe("monitor:packet", mview.OnPacket)
 
 	return mview
 }
@@ -66,11 +51,5 @@ func (v *MonitorView) OnTabShow() {
 }
 
 func (v *MonitorView) OnTabHide() {
-
-}
-
-func (v *MonitorView) OnPacket(name string, event any) {
-	if packet, ok := event.(sniffing.Packet); ok {
-		fmt.Fprintf(v.sniffView, "TCP FROM %s to %s\n", packet.Source, packet.Target)
-	}
+	state.Dispatch("monitor:stop", nil)
 }

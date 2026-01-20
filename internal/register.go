@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/bridge"
+	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ebtable"
 	"github.com/jeanpasqualini/linux-routing-visualizer/internal/linux/network/ns"
 	"golang.org/x/sys/unix"
 	"os"
@@ -146,6 +147,14 @@ func Register(app *tview.Application) {
 		}
 	})
 
+	state.Subscribe("ebtable:request", func(name string, event any) {
+		backend := ebtable.NewEbtableBackend()
+		table, err := backend.Fetch()
+		if err == nil {
+			state.Dispatch("ebtable:response", table)
+		}
+	})
+
 	state.Subscribe("bridge:request", func(name string, event any) {
 		backend := bridge.NewBridgeBackend()
 		list, err := backend.Fetch()
@@ -194,20 +203,38 @@ func Register(app *tview.Application) {
 		}
 	})
 
+	ctxMonitor, cancelMonotor := context.WithCancel(ctx)
+
+	state.Subscribe("monitor:stop", func(name string, event any) {
+		cancelMonotor()
+	})
+
 	state.Subscribe("monitor:start", func(name string, event any) {
 		go func() {
 			backend := sniffing.NewSniffingBackend()
-			packetChan, err := backend.Sniff(ctx, os.Getenv("NETDEVICE"), "", 1600, false, 2*time.Second)
+			packetChan, err := backend.Sniff(ctxMonitor, os.Getenv("NETDEVICE"), "", 1600, false, 2*time.Second)
 			if err != nil {
 				state.Dispatch("app:log", err.Error())
 				return
 			}
 
-			state.Dispatch("app:log", "monitor:start")
 			for packet := range packetChan {
 				app.QueueUpdate(func() {
-					state.Dispatch("app:log", "packet received")
 					state.Dispatch("monitor:packet", packet)
+				})
+			}
+		}()
+		go func() {
+			backend := conntrack.NewConntrackBackend()
+			packetChan, err := backend.FetchLive(ctxMonitor)
+			if err != nil {
+				state.Dispatch("app:log", err.Error())
+				return
+			}
+
+			for packet := range packetChan {
+				app.QueueUpdate(func() {
+					state.Dispatch("monitor:conntrack", packet)
 				})
 			}
 		}()

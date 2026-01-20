@@ -79,11 +79,11 @@ func (v *TabPanelTop) drawTabBar(screen tcell.Screen) {
 	border := tcell.ColorMediumPurple
 	activeBorder := tcell.ColorMediumVioletRed
 	//text := tcell.ColorWhite
-	//inactive := tcell.ColorGray
+	//inactive := tcell.ColorGraysss
 
 	curX := x + 1
 
-	tview.Print(screen, repeat("─", w), x, y+2, 200, tview.AlignLeft, border)
+	tview.Print(screen, repeat("─", w), x, y+2, w, tview.AlignLeft, border)
 
 	activeName := v.panel.getActiveName()
 	for _, name := range v.panel.GetPageNames() {

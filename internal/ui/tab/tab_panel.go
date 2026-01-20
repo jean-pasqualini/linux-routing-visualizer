@@ -56,6 +56,9 @@ func (v *TabPanel) AddPage(name string, item tview.Primitive, resize, visible bo
 	v.tabNames = append(v.tabNames, name)
 	pages := v.pages.AddPage(name, item, resize, visible)
 	pages.SendToBack(name)
+	if s, ok := item.(event.TabEventSubscribe); ok && visible {
+		s.OnTabShow()
+	}
 	return v
 }
 

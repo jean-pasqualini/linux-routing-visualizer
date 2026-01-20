@@ -3,7 +3,7 @@ BACKEND_SOCKET = SOCKET_DIAG
 BACKEND_IPVS = IPVS_BINARY
 BACKEND_IPTABLE = IPTABLE_BINARY
 TAGS = $(BACKEND_SNIFF) $(BACKEND_SOCKET) $(BACKEND_IPVS) $(BACKEND_IPTABLE)
-NETDEVICE = wlp0s20f3
+NETDEVICE = wlp1s0f0
 DEBUG ?= 0
 
 ifeq ($(DEBUG),1)
@@ -56,6 +56,8 @@ run-docker-iptable:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go iptable
 run-docker-arptable:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go arptable
+run-docker-ebtable:
+	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go ebtable
 run-docker-link:
 	$(DOCKER_RUN) go run -tags '$(TAGS)' main.go link
 run-docker-ipvs:
@@ -122,3 +124,5 @@ ipvs-create:
 	$(DOCKER_RUN) bash -c "(ipvsadm -A -t 1.1.1.1:8080 -s rr && ipvsadm -a -t 1.1.1.1:8080 -r 10.0.0.11:8080 -m && ipvsadm -a -t 1.1.1.1:8080 -r 10.0.0.12:8080 -m) || ipvsadm -D -t 1.1.1.1:8080"
 sysctl-list:
 	$(DOCKER_RUN) ./net-sysctl-map.sh
+demo-conntrack-live:
+	$(DOCKER_RUN) go run run/conntrack_live.go
