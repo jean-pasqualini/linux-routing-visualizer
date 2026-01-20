@@ -9,11 +9,13 @@ import (
 
 type SysctlView struct {
 	*tview.TextView
+	visible bool
 }
 
 func NewSysctlView() *SysctlView {
 	v := &SysctlView{
 		TextView: tview.NewTextView().SetDynamicColors(true),
+		visible:  false,
 	}
 
 	state.Subscribe("sysctl:response", v.OnResponse)
@@ -23,6 +25,10 @@ func NewSysctlView() *SysctlView {
 
 func (v *SysctlView) OnTabShow() {
 	state.Dispatch("sysctl:request", nil)
+}
+
+func (v *SysctlView) OnTabHide() {
+
 }
 
 func (v *SysctlView) OnResponse(name string, event any) {

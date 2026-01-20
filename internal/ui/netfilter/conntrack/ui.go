@@ -13,6 +13,7 @@ type ConntrackView struct {
 	*tview.Flex
 	goText    *tview.TextView
 	humanText *tview.TextView
+	visible   bool
 }
 
 func NewConntrackView() *ConntrackView {
@@ -23,6 +24,7 @@ func NewConntrackView() *ConntrackView {
 		flexView,
 		goTextView,
 		humanTextView,
+		false,
 	}
 
 	v.AddItem(goTextView, 0, 1, false)
@@ -35,6 +37,10 @@ func NewConntrackView() *ConntrackView {
 
 func (v *ConntrackView) OnTabShow() {
 	state.Dispatch("conntrack:request", nil)
+}
+
+func (v *ConntrackView) OnTabHide() {
+
 }
 
 func (v *ConntrackView) OnConntrackResponse(name string, event any) {

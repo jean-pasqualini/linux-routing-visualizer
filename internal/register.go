@@ -76,6 +76,7 @@ func Register(app *tview.Application) {
 				state.Dispatch("app:log", fmt.Sprintf("change ns -> %s\n", newNs))
 				currentNamespace = &newNs
 			}
+			state.Dispatch("namespace:changed", nil)
 		}
 	})
 
@@ -124,10 +125,10 @@ func Register(app *tview.Application) {
 		}
 	})
 
-	state.Subscribe("socket:request", func(name string, event any) {
+	state.Subscribe("socket:request", withinNamespace(func(name string, event any) {
 		sBackend := socket.NewSocketBackend()
 		state.Dispatch("socket:response", sBackend.ListListeners())
-	})
+	}))
 
 	state.Subscribe("arp:request", func(name string, event any) {
 		backend := arp.NewArpBackend()

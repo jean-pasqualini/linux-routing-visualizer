@@ -3,6 +3,7 @@ package ns
 import (
 	"fmt"
 	"github.com/prometheus/procfs"
+	"path"
 	"strings"
 )
 
@@ -33,9 +34,27 @@ func UniqueSlice[T comparable](inputSlice []T) []T {
 	return uniqueSlice
 }
 
+func procIdentity(p procfs.Proc) string {
+	name := ""
+	groups, _ := p.Cgroups()
+	cmdLine, _ := p.CmdLine()
+	for _, group := range groups {
+		if strings.HasSuffix(group.Path, ".service") {
+			name += "[service]"
+
+			return fmt.Sprintf("[service:%d] %s", p.PID, path.Base(group.Path))
+		}
+		if strings.Contains(group.Path, "docker-") {
+			return fmt.Sprintf("[docker:%d] %s", p.PID, strings.Join(cmdLine, " "))
+		}
+	}
+	return fmt.Sprintf("[process:%d] %s", p.PID, strings.Join(cmdLine, " "))
+}
+
 func ListNamespace() (NamespaceList, error) {
 	list := make(NamespaceList)
 
+	// Procs part
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
 		return list, err
@@ -53,11 +72,10 @@ func ListNamespace() (NamespaceList, error) {
 		}
 		id := int(namespaces["net"].Inode)
 		if _, ok := list[id]; !ok {
-			cmdLine, _ := proc.CmdLine()
 			list[id] = NamespaceSpec{
 				Path:   fmt.Sprintf("/proc/%d/ns/net", proc.PID),
 				NodeID: id,
-				Name:   strings.Join(cmdLine, " "),
+				Name:   procIdentity(proc),
 			}
 		}
 	}

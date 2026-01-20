@@ -9,12 +9,14 @@ import (
 
 type BridgeView struct {
 	*tview.TextView
+	visible bool
 }
 
 func NewBridgeView() *BridgeView {
 	textView := tview.NewTextView().SetDynamicColors(true)
 	v := BridgeView{
 		textView,
+		false,
 	}
 
 	state.Subscribe("bridge:response", v.OnResponse)
@@ -24,6 +26,10 @@ func NewBridgeView() *BridgeView {
 
 func (v *BridgeView) OnTabShow() {
 	state.Dispatch("bridge:request", nil)
+}
+
+func (v *BridgeView) OnTabHide() {
+
 }
 
 func (v *BridgeView) OnResponse(name string, event any) {

@@ -65,6 +65,10 @@ func (v *MonitorView) OnTabShow() {
 	state.Dispatch("monitor:start", nil)
 }
 
+func (v *MonitorView) OnTabHide() {
+
+}
+
 func (v *MonitorView) OnPacket(name string, event any) {
 	if packet, ok := event.(sniffing.Packet); ok {
 		fmt.Fprintf(v.sniffView, "TCP FROM %s to %s\n", packet.Source, packet.Target)

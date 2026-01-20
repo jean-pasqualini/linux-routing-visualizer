@@ -9,12 +9,14 @@ import (
 
 type ArpView struct {
 	*tview.TextView
+	visible bool
 }
 
 func NewArpView() *ArpView {
 	textView := tview.NewTextView().SetDynamicColors(true)
 	v := &ArpView{
 		textView,
+		false,
 	}
 
 	state.Subscribe("arp:response", v.OnArpResponse)
@@ -24,6 +26,10 @@ func NewArpView() *ArpView {
 
 func (v *ArpView) OnTabShow() {
 	state.Dispatch("arp:request", nil)
+}
+
+func (v *ArpView) OnTabHide() {
+
 }
 
 func (v *ArpView) OnArpResponse(name string, event any) {

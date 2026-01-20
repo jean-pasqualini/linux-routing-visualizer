@@ -9,12 +9,13 @@ import (
 
 type ArpTableView struct {
 	*tview.TextView
+	visible bool
 }
 
 func NewArpTableView() *ArpTableView {
 	textView := tview.NewTextView().SetDynamicColors(true)
 	v := &ArpTableView{
-		textView,
+		textView, false,
 	}
 
 	state.Subscribe("arptable:response", v.OnResponse)
@@ -24,6 +25,10 @@ func NewArpTableView() *ArpTableView {
 
 func (v *ArpTableView) OnTabShow() {
 	state.Dispatch("arptable:request", nil)
+}
+
+func (v *ArpTableView) OnTabHide() {
+
 }
 
 func (v *ArpTableView) OnResponse(name string, event any) {

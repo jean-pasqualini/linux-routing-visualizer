@@ -13,6 +13,7 @@ type IpTableView struct {
 	*tab.TabPanel
 	parsedView *textview.TextViewSearchable
 	rawView    *tview.TextView
+	visible    bool
 }
 
 type IpTableResponse struct {
@@ -37,6 +38,7 @@ func NewIpTableView() *IpTableView {
 		parsedView: parsedView,
 		rawView:    rawView,
 		TabPanel:   pages,
+		visible:    false,
 	}
 
 	state.Subscribe("iptables:response", v.render)
@@ -46,6 +48,10 @@ func NewIpTableView() *IpTableView {
 
 func (p *IpTableView) OnTabShow() {
 	state.Dispatch("iptables:request", nil)
+}
+
+func (v *IpTableView) OnTabHide() {
+
 }
 
 func (p *IpTableView) render(name string, event any) {

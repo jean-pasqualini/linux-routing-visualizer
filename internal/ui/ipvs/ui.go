@@ -41,6 +41,10 @@ func (v *IPVSView) OnTabShow() {
 	state.Dispatch("ipvs:request", nil)
 }
 
+func (v *IPVSView) OnTabHide() {
+
+}
+
 func (v *IPVSView) onDisplay(name string, event any) {
 	v.rawText.Clear()
 	v.goText.Clear()

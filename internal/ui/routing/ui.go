@@ -29,6 +29,10 @@ func (v *RoutingView) OnTabShow() {
 	state.Dispatch("routing:request", nil)
 }
 
+func (v *RoutingView) OnTabHide() {
+
+}
+
 func (v *RoutingView) OnResponse(name string, event any) {
 	v.Clear()
 	if config, ok := event.(routing.RoutingConfig); ok {
